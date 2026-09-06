@@ -163,13 +163,13 @@ export const AgentChatPage: React.FC = () => {
                   type="text"
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
-                  disabled={execution.isAgentThinking || execution.isRunningPipeline}
+                  disabled={execution.isAgentThinking || execution.isRunning}
                   placeholder="Ask the agent to do something..."
                   className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  disabled={!instruction.trim() || execution.isAgentThinking || execution.isRunningPipeline}
+                  disabled={!instruction.trim() || execution.isAgentThinking || execution.isRunning}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
                   <Send className="w-5 h-5" />
@@ -180,7 +180,7 @@ export const AgentChatPage: React.FC = () => {
         </div>
 
         <div className="xl:col-span-2 space-y-6">
-          {(!execution.result && !execution.isRunningPipeline && execution.currentLayer === null && !execution.isAgentThinking) ? (
+          {(!execution.result && !execution.isRunning && execution.currentLayer === null && !execution.isAgentThinking) ? (
             <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 border-dashed flex flex-col items-center justify-center text-center h-full min-h-[400px]">
               <Shield className="w-16 h-16 text-gray-300 mb-4" />
               <h3 className="text-lg font-medium text-gray-900">Pipeline Idle</h3>
@@ -197,7 +197,7 @@ export const AgentChatPage: React.FC = () => {
                 {execution.result && execution.selectedLayerId ? (
                   <>
                     {/* Final Verdict Panel */}
-                    {!execution.isRunningPipeline && (
+                    {!execution.isRunning && (
                       <div className={`p-6 rounded-lg shadow-xl border ${
                         execution.result.overall_decision === 'ALLOW' ? 'bg-emerald-950 border-emerald-800' :
                         execution.result.overall_decision === 'FREEZE' ? 'bg-orange-950 border-orange-800' :
@@ -257,11 +257,13 @@ export const AgentChatPage: React.FC = () => {
                   </>
                 ) : (
                   <div className="bg-gray-950 border border-gray-800 rounded-lg shadow-xl p-8 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
-                    {execution.isRunningPipeline ? (
+                    {execution.isAgentThinking || execution.isRunning ? (
                       <>
                         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <h3 className="text-lg font-medium text-gray-300">AcademIQ analyzing generated action...</h3>
-                        <p className="mt-2 text-sm text-gray-500">Executing security pipeline and creating cryptographic evidence.</p>
+                        <h3 className="text-lg font-medium text-gray-300">Processing...</h3>
+                        <p className="mt-2 text-sm text-gray-500">
+                          {execution.isAgentThinking ? "Agent is generating an action..." : "Executing security pipeline and creating cryptographic evidence."}
+                        </p>
                       </>
                     ) : (
                       <>

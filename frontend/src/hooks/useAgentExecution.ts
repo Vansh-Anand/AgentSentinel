@@ -25,7 +25,7 @@ const INITIAL_LAYER_STATE: PipelineDisplayState = {
 
 export const useAgentExecution = () => {
   const [isAgentThinking, setIsAgentThinking] = useState(false);
-  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
   
@@ -41,7 +41,7 @@ export const useAgentExecution = () => {
 
   const sendMessage = useCallback(async (message: string) => {
     setIsAgentThinking(true);
-    setIsRunningPipeline(false);
+    setIsRunning(false);
     setError(null);
     setAgentResponse(null);
     setResult(null);
@@ -57,19 +57,19 @@ export const useAgentExecution = () => {
       setIsAgentThinking(false);
       
       if (response.pipeline_result) {
-        setIsRunningPipeline(true);
+        setIsRunning(true);
         setPendingResult(response.pipeline_result);
       }
       
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'An error occurred communicating with the agent.');
       setIsAgentThinking(false);
-      setIsRunningPipeline(false);
+      setIsRunning(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!pendingResult || !isRunningPipeline) return;
+    if (!pendingResult || !isRunning) return;
 
     let timeoutId: ReturnType<typeof setTimeout>;
     let stopped = false;
@@ -77,14 +77,15 @@ export const useAgentExecution = () => {
     const layers: Array<keyof PipelineRunResponse> = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
 
     // Bypass animation completely in tests for stable assertions
-    if (process.env.NODE_ENV === 'test') {
+    const isTest = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test';
+    if (isTest) {
       setResult(pendingResult);
       if (pendingResult.overall_decision === 'ALLOW') {
         setSelectedLayerId('L5');
       } else {
         setSelectedLayerId(pendingResult.stopping_layer);
       }
-      setIsRunningPipeline(false);
+      setIsRunning(false);
       setPendingResult(null);
       
       // Dispatch ECES event
@@ -105,8 +106,15 @@ export const useAgentExecution = () => {
         } else {
           setSelectedLayerId(pendingResult.stopping_layer);
         }
-        setIsRunningPipeline(false);
+        setIsRunning(false);
         setPendingResult(null);
+        
+        // Dispatch ECES event
+        window.dispatchEvent(
+          new CustomEvent('eces-new-session', {
+            detail: { session_id: pendingResult.session_id }
+          })
+        );
         return;
       }
 
@@ -158,7 +166,7 @@ export const useAgentExecution = () => {
             } else {
               setSelectedLayerId(pendingResult.stopping_layer);
             }
-            setIsRunningPipeline(false);
+            setIsRunning(false);
             setPendingResult(null);
             
             // Dispatch ECES event
@@ -178,11 +186,11 @@ export const useAgentExecution = () => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [pendingResult, executionId, isRunningPipeline]);
+  }, [pendingResult, executionId, isRunning]);
 
   const reset = useCallback(() => {
     setIsAgentThinking(false);
-    setIsRunningPipeline(false);
+    setIsRunning(false);
     setError(null);
     setAgentResponse(null);
     setResult(null);
@@ -195,7 +203,7 @@ export const useAgentExecution = () => {
 
   return {
     isAgentThinking,
-    isRunningPipeline,
+    isRunning,
     error,
     agentResponse,
     result, 
