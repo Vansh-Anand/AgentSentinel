@@ -34,7 +34,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
     return (
       <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
         <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <h3 className="text-lg font-medium text-gray-900">Executing...</h3>
+        <h3 className="text-lg font-medium text-gray-900">Processing...</h3>
         <p className="mt-2 text-sm text-gray-500">Transmitting scenario payload to pipeline orchestration layer...</p>
       </div>
     );

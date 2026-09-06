@@ -89,7 +89,7 @@ describe('PipelinePage Tests', () => {
     
     // Expect the state to change from idle to executing
     expect(screen.queryByText('Pipeline Idle')).not.toBeInTheDocument();
-    expect(screen.getByText('Executing...')).toBeInTheDocument();
+    expect(screen.getAllByText('Processing...').length).toBeGreaterThan(0);
 
     await act(async () => {
       resolvePromise(mockResponse);
@@ -104,6 +104,11 @@ describe('PipelinePage Tests', () => {
     });
 
     expect(screen.getByText('Agent execution permitted')).toBeInTheDocument();
+    
+    // Check final verdict panel
+    expect(screen.getByText('SECURITY DECISION')).toBeInTheDocument();
+    expect(screen.getAllByText('ALLOW').length).toBeGreaterThan(0);
+    expect(screen.getByText('No malicious intent or policy violations detected across the pipeline.')).toBeInTheDocument();
   });
   
   it('handles blocked result and sets remaining layers to skipped', async () => {
@@ -131,7 +136,7 @@ describe('PipelinePage Tests', () => {
     fireEvent.click(screen.getByText('L2 Backslash Obfuscation'));
     fireEvent.click(screen.getByText('Execute Attack'));
     
-    expect(screen.getByText('Executing...')).toBeInTheDocument();
+    expect(screen.getAllByText('Processing...').length).toBeGreaterThan(0);
 
     await act(async () => {
       resolvePromise(mockResponse);
@@ -145,5 +150,10 @@ describe('PipelinePage Tests', () => {
     });
 
     expect(screen.getByText('Execution blocked at L2')).toBeInTheDocument();
+    
+    // Check final verdict panel
+    expect(screen.getByText('SECURITY DECISION')).toBeInTheDocument();
+    expect(screen.getAllByText('BLOCK').length).toBeGreaterThan(0);
+    expect(screen.getByText('Obfuscated command normalized and rejected by semantic policy.')).toBeInTheDocument();
   });
 });

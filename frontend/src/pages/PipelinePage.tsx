@@ -7,7 +7,35 @@ import { usePipelineExecution } from '../hooks/usePipelineExecution';
 import { useSessionStatistics } from '../hooks/useSessionStatistics';
 import { useDemoOrchestrator } from '../hooks/useDemoOrchestrator';
 import { ErrorState } from '../components/common/ErrorState';
-import { Shield, Play, Square, RotateCcw, CheckCircle, Database } from 'lucide-react';
+import { Shield, Play, Square, RotateCcw, CheckCircle, Database, XCircle, AlertTriangle } from 'lucide-react';
+
+const getVerdictReason = (layer: string, decision: string) => {
+  if (decision === 'ALLOW') return 'No malicious intent or policy violations detected across the pipeline.';
+  switch (layer) {
+    case 'L1': return 'Action violates allowed grammar/policy constraints.';
+    case 'L2': return 'Obfuscated command normalized and rejected by semantic policy.';
+    case 'L3': return 'Kernel execution behavior matched restricted anomaly patterns.';
+    case 'L4': return 'Action sequence diverged significantly from learned behavioral baseline.';
+    case 'L5': return 'Temporal sequence produced excessive risk crossing governance thresholds.';
+    case 'L6': return 'Cryptographic evidence chain tampering detected.';
+    case 'L7': return 'System integrity attestation failed.';
+    default: return 'Action was intercepted by security policy.';
+  }
+};
+
+const getExecutionModeDisplay = (layer: string, decision: string) => {
+  if (decision === 'ALLOW') return { mode: 'REAL_RUNTIME', desc: 'All evaluated layers' };
+  switch (layer) {
+    case 'L1': return { mode: 'REAL_RUNTIME', desc: 'Native Grammar-Constrained Decoding' };
+    case 'L2': return { mode: 'REAL_RUNTIME', desc: 'Native Semantic Deobfuscation' };
+    case 'L3': return { mode: 'SIMULATED', desc: 'Demonstration simulation — not native runtime detection.' };
+    case 'L4': return { mode: 'SYNTHETIC', desc: 'Demonstration simulation — not native runtime detection.' };
+    case 'L5': return { mode: 'SIMULATED', desc: 'Demonstration simulation — not native runtime detection.' };
+    case 'L6': return { mode: 'REAL_RUNTIME', desc: 'Native Cryptographic Chain' };
+    case 'L7': return { mode: 'UNAVAILABLE', desc: 'Demonstration simulation — not native runtime detection.' };
+    default: return { mode: 'UNKNOWN', desc: '' };
+  }
+};
 import { Link } from 'react-router-dom';
 import { AVAILABLE_SCENARIOS } from '../types/pipeline';
 
@@ -206,12 +234,81 @@ export const PipelinePage: React.FC = () => {
               </div>
               <div className="lg:col-span-1 h-full">
                 {execution.result && execution.selectedLayerId ? (
-                  <InterceptionDetails result={execution.result} selectedLayerId={execution.selectedLayerId} />
+                  <>
+                    {/* Final Verdict Panel */}
+                    {!execution.isRunning && (
+                      <div className={`p-6 rounded-lg shadow-xl border ${
+                        execution.result.overall_decision === 'ALLOW' ? 'bg-emerald-950 border-emerald-800' :
+                        execution.result.overall_decision === 'FREEZE' ? 'bg-orange-950 border-orange-800' :
+                        'bg-red-950 border-red-800'
+                      }`}>
+                        <div className="flex items-start space-x-4">
+                          {execution.result.overall_decision === 'ALLOW' ? <CheckCircle className="w-10 h-10 text-emerald-400 flex-shrink-0" /> :
+                           execution.result.overall_decision === 'FREEZE' ? <AlertTriangle className="w-10 h-10 text-orange-400 flex-shrink-0" /> :
+                           <XCircle className="w-10 h-10 text-red-400 flex-shrink-0" />}
+                          
+                          <div className="flex-1">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">SECURITY DECISION</h3>
+                            <div className="flex items-baseline space-x-3 mb-4">
+                              <span className={`text-3xl font-black tracking-tight ${
+                                execution.result.overall_decision === 'ALLOW' ? 'text-emerald-400' :
+                                execution.result.overall_decision === 'FREEZE' ? 'text-orange-400' :
+                                'text-red-400'
+                              }`}>
+                                {execution.result.overall_decision}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4 border-t border-gray-800/50 pt-4">
+                              <div>
+                                <span className="block text-gray-500 font-semibold mb-1">Stopping Layer</span>
+                                <span className="text-gray-200 font-mono bg-gray-900 px-2 py-1 rounded">
+                                  {execution.result.stopping_layer}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-500 font-semibold mb-1">Execution Mode</span>
+                                <span className="text-blue-400 font-bold">
+                                  {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).mode}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="bg-gray-900/50 p-3 rounded text-sm">
+                              <span className="block text-gray-500 font-semibold mb-1">Reason</span>
+                              <p className="text-gray-300">
+                                {getVerdictReason(execution.result.stopping_layer, execution.result.overall_decision)}
+                              </p>
+                            </div>
+                            
+                            {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).mode !== 'REAL_RUNTIME' && (
+                              <p className="mt-3 text-xs font-semibold text-gray-400 italic flex items-center">
+                                <AlertTriangle className="w-3 h-3 mr-1" />
+                                {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).desc}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <InterceptionDetails result={execution.result} selectedLayerId={execution.selectedLayerId} />
+                  </>
                 ) : (
                   <div className="bg-gray-950 border border-gray-800 rounded-lg shadow-xl p-8 flex flex-col items-center justify-center text-center h-full min-h-[400px]">
-                    <Shield className="w-12 h-12 text-gray-700 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-400">Awaiting Details</h3>
-                    <p className="mt-2 text-sm text-gray-600">Forensic details will appear here once execution completes or when a layer is selected.</p>
+                    {execution.isRunning ? (
+                      <>
+                        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <h3 className="text-lg font-medium text-gray-300">Processing...</h3>
+                        <p className="mt-2 text-sm text-gray-500">Executing security pipeline and creating cryptographic evidence.</p>
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-12 h-12 text-gray-700 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-400">Awaiting Details</h3>
+                        <p className="mt-2 text-sm text-gray-600">Forensic details will appear here once execution completes or when a layer is selected.</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
