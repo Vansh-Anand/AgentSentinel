@@ -91,4 +91,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            # Public CI exposes annotations even when job logs require sign-in.
+            detail = str(exc).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")[:240]
+            print(f"::error title=Compose smoke::{type(exc).__name__}: {detail}", flush=True)
+        raise
