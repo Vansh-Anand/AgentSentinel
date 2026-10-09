@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import tempfile
 import time
-from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
@@ -34,7 +33,7 @@ def wait_ready(url: str, *, seconds: int = 90) -> bytes:
     while True:
         try:
             return fetch(url)
-        except (HTTPError, URLError, TimeoutError):
+        except OSError:
             if time.monotonic() >= deadline:
                 raise RuntimeError(f"service did not become ready: {url}") from None
             time.sleep(2)
