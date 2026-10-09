@@ -11,7 +11,7 @@ describe('App Foundation Tests', () => {
     expect(screen.getByText('REAL RUNTIME')).toBeInTheDocument();
 
     rerender(<ExecutionModeBadge mode={ExecutionMode.SIMULATED} />);
-    expect(screen.getByText('SIMULATED')).toBeInTheDocument();
+    expect(screen.getByText('SIMULATED (Demonstration)')).toBeInTheDocument();
   });
 
   it('renders StatusBadge correctly', () => {
@@ -27,7 +27,7 @@ describe('App Foundation Tests', () => {
 
   it('renders application shell navigation', () => {
     render(<App />);
-    expect(screen.getByText('AcademIQ')).toBeInTheDocument();
+    expect(screen.getByText('AgentSentinel')).toBeInTheDocument();
     expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Security Pipeline').length).toBeGreaterThan(0);
   });

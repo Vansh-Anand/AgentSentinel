@@ -77,7 +77,7 @@ export const useAgentExecution = () => {
     const layers: Array<keyof PipelineRunResponse> = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
 
     // Bypass animation completely in tests for stable assertions
-    const isTest = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test';
+    const isTest = typeof import.meta.env !== 'undefined' && import.meta.env.MODE === 'test';
     if (isTest) {
       setResult(pendingResult);
       if (pendingResult.overall_decision === 'ALLOW') {

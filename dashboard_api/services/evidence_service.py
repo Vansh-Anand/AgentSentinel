@@ -11,8 +11,16 @@ from l6_eces.crypto.signer import SoftwareSigner
 from l6_eces.forensics.verifier import EvidenceVerifier
 
 class EvidenceService:
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None):
+        self._db_path = db_path
+
+    @property
+    def db_path(self) -> str:
+        return self._db_path or os.environ.get("AGENTSENTINEL_ECES_DB_PATH", DEFAULT_DB_PATH)
+
+    @db_path.setter
+    def db_path(self, value: str) -> None:
+        self._db_path = value
         
     def get_sessions(self) -> SessionListResponse:
         if not os.path.exists(self.db_path):

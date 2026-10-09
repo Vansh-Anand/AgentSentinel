@@ -25,7 +25,8 @@ def get_health():
     results_ok = os.path.exists("benchmarks/results")
     
     # ECES SQLite available if DB file exists
-    eces_ok = os.path.exists(".data/evidence/eces.db")
+    from l6_eces.storage.sqlite_store import DEFAULT_DB_PATH
+    eces_ok = os.path.exists(DEFAULT_DB_PATH)
     
     return HealthResponse(
         status="healthy",

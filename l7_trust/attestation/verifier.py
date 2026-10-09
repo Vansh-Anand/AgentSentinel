@@ -1,5 +1,7 @@
 import time
 import hashlib
+import hmac
+import os
 from typing import Optional, Dict
 from pydantic import BaseModel
 from ..tee.provider import AttestationEvidence, ConfidentialComputeProvider
@@ -13,6 +15,8 @@ class AttestationChallenge(BaseModel):
 
 class AttestationResult(BaseModel):
     valid: bool
+    hardware_attested: bool = False
+    simulation_valid: bool = False
     platform: str
     measurement_match: bool
     fresh: bool
@@ -80,6 +84,12 @@ class AttestationVerifier:
             )
             
         del self._active_challenges[challenge_nonce]
+        if evidence.timestamp < challenge.issued_at - 5 or evidence.timestamp > now + 5:
+            return AttestationResult(
+                valid=False, platform=evidence.platform, measurement_match=False,
+                fresh=False, signature_valid=False, policy_match=False,
+                failure_reason="Evidence timestamp is outside the challenge window."
+            )
         
         # 2. Measurement check
         measurement_match = (evidence.measurement == self.expected_measurement)
@@ -90,25 +100,22 @@ class AttestationVerifier:
                 failure_reason=f"Measurement mismatch. Expected {self.expected_measurement}, got {evidence.measurement}"
             )
             
-        # 3. Signature check (Simulated)
+        # A deterministic hash demonstrates nonce binding in tests. It is not a
+        # signature and must never become a hardware-attested success.
         if evidence.attestation_type == "SIMULATED_QUOTE":
             expected_quote = hashlib.sha256(f"{evidence.measurement}:{challenge_nonce}".encode()).hexdigest()
-            signature_valid = (evidence.quote_reference == expected_quote)
-        else:
-            # Native HW signature verification would go here using remote attestation service
-            signature_valid = False
-            
-        if not signature_valid:
+            simulation_valid = hmac.compare_digest(evidence.quote_reference or "", expected_quote)
             return AttestationResult(
                 valid=False, platform=evidence.platform, measurement_match=True,
-                fresh=True, signature_valid=False, policy_match=False,
-                failure_reason="Invalid hardware signature / quote reference."
+                fresh=True, signature_valid=False, policy_match=simulation_valid,
+                simulation_valid=simulation_valid,
+                failure_reason=("Simulation quote verified; hardware attestation unavailable."
+                                if simulation_valid else "Invalid simulation quote."),
             )
-            
+        # No native quote verifier is registered in this build. A claimed TDX or
+        # SEV-SNP platform string or quote reference cannot establish trust.
         return AttestationResult(
-            valid=True, platform=evidence.platform, measurement_match=True,
-            fresh=True, signature_valid=True, policy_match=True,
-            failure_reason=None
+            valid=False, platform=evidence.platform, measurement_match=True,
+            fresh=True, signature_valid=False, policy_match=False,
+            failure_reason="Native quote verification is unavailable."
         )
-
-import os

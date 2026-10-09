@@ -160,7 +160,7 @@ describe('Faculty Demo End-to-End Workflow', () => {
       const l5Elements = screen.getAllByText('L5');
       expect(l5Elements.length).toBeGreaterThan(0);
       // Should show the specific warning message for SIMULATED
-      expect(screen.getByText('Demonstration simulation — not native runtime detection.')).toBeInTheDocument();
+      expect(screen.getByText('Demonstration heuristic, not live Bayesian inference.')).toBeInTheDocument();
     });
   });
 });

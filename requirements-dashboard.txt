@@ -1,0 +1,9 @@
+# Dashboard and gateway demo. google-genai is optional for the Gemini provider.
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+pydantic>=2,<3
+numpy>=2,<3
+PyYAML>=6,<7
+ecdsa>=0.19,<1
+bashlex>=0.18,<1
+cryptography>=42,<51

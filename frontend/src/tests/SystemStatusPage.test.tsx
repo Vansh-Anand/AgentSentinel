@@ -133,7 +133,7 @@ describe('SystemStatusPage Tests', () => {
 
     // Check execution mode badges (these texts come from ExecutionModeBadge component)
     expect(screen.getAllByText('REAL RUNTIME').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('SIMULATED').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('SIMULATED (Demonstration)').length).toBeGreaterThan(0);
   });
 
   it('renders capability matrix', async () => {
@@ -141,12 +141,12 @@ describe('SystemStatusPage Tests', () => {
     render(<SystemStatusPage />);
     
     await waitFor(() => {
-      expect(screen.getByText('Capability Matrix')).toBeInTheDocument();
+      expect(screen.getByText('SYNTHETIC / BENCHMARK')).toBeInTheDocument();
     });
     
     expect(screen.getByText('Prompt Injection Defense')).toBeInTheDocument();
     expect(screen.getByText('Native eBPF')).toBeInTheDocument();
     expect(screen.getByText('Real LLM benchmark')).toBeInTheDocument();
-    expect(screen.getByText('BENCHMARK')).toBeInTheDocument();
+    expect(screen.getByText('BENCHMARK (Dataset)')).toBeInTheDocument();
   });
 });

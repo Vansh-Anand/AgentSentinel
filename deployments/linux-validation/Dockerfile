@@ -1,22 +1,26 @@
 FROM ubuntu:24.04
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     llvm \
     libbpf-dev \
-    linux-headers-generic \
-    bpftool \
+    libelf-dev \
+    zlib1g-dev \
+    linux-tools-generic \
+    make \
     python3 \
     python3-pip \
-    linux-tools-common \
-    linux-tools-generic \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s "$(find /usr/lib/linux-tools -name bpftool | head -n 1)" /usr/local/bin/bpftool \
+    && /usr/local/bin/bpftool version
 
 WORKDIR /opt/academiq
 
-# Note: Running eBPF requires --privileged and -v /sys/kernel/debug:/sys/kernel/debug:rw
-COPY . /opt/academiq/
+COPY requirements-dashboard.txt requirements-test.txt ./
+RUN pip3 install --break-system-packages -r requirements-test.txt
 
-RUN pip3 install --break-system-packages -r requirements.txt
+COPY . /opt/academiq/
 
 CMD ["./deployments/linux-validation/run-benchmarks.sh"]

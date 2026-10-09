@@ -137,7 +137,6 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
                       </div>
                     )}
                     
-                    {!result && (
                       <div className="pt-2">
                         <button
                           onClick={() => onSelect(scenario.id)}
@@ -148,7 +147,6 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
                           Execute Attack
                         </button>
                       </div>
-                    )}
                   </div>
                 )}
               </div>

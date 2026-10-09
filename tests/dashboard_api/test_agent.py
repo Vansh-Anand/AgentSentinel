@@ -91,4 +91,4 @@ def test_agent_chat_endpoint_simulated_labels():
     assert data["pipeline_result"]["L5"]["execution_mode"] == "SIMULATED"
     # Even if L1/L2 pass, L3 should be simulated
     assert data["pipeline_result"]["L3"]["execution_mode"] == "SIMULATED"
-    assert data["pipeline_result"]["L4"]["execution_mode"] == "SIMULATED"
+    assert data["pipeline_result"]["L4"]["execution_mode"] == "SYNTHETIC"

@@ -129,7 +129,7 @@ class DivergenceResult(BaseModel):
     model_version: str
     ece_version: str
     reason_codes: List[str]
-    
+
 # ============================================================
 # PHASE 6 (L5 RISKCHAIN) SCHEMAS
 # ============================================================
@@ -287,3 +287,13 @@ class CrossSessionEvent(BaseEvent):
     bayesian_probability: float
     simulation: bool = False
     parent_event_id: Optional[str] = None
+
+class EvaluationAuditRecord(BaseEvent):
+    event_type: str = Field(default="EvaluationAudit")
+    schema_version: str = "1.0"
+    overall_decision: str
+    stopping_layer: str
+    execution_mode: str
+    l6_executed: bool
+    scenario_id: Optional[str] = None
+    pipeline_response: Dict[str, Any]

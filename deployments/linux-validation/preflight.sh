@@ -6,10 +6,11 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
+FAILED=0
 
 pass() { echo -e "[${GREEN}PASS${NC}] $1"; }
 warn() { echo -e "[${YELLOW}WARN${NC}] $1"; }
-fail() { echo -e "[${RED}FAIL${NC}] $1"; }
+fail() { echo -e "[${RED}FAIL${NC}] $1"; FAILED=$((FAILED + 1)); }
 
 echo "========================================"
 echo "AcademIQ Native Linux Preflight Check"
@@ -44,16 +45,16 @@ else
     fail "BTF support missing (/sys/kernel/btf/vmlinux not found). CORE eBPF will not work."
 fi
 
-# 5. BPF Filesystem
+# 5. Tracepoint filesystem and optional BPF filesystem
+if [ -f /sys/kernel/tracing/events/syscalls/sys_enter_execve/id ]; then
+    pass "syscall tracepoints are exposed through tracefs."
+else
+    fail "syscall tracepoints are unavailable; mount tracefs at /sys/kernel/tracing."
+fi
 if mount | grep -q bpffs; then
     pass "BPF filesystem is mounted."
 else
-    if [ -d "/sys/fs/bpf" ]; then
-        warn "BPF filesystem directory exists but is not mounted. Attempting to mount..."
-        mount -t bpf bpf /sys/fs/bpf && pass "Mounted bpffs successfully." || fail "Failed to mount bpffs."
-    else
-        fail "/sys/fs/bpf does not exist."
-    fi
+    warn "BPF filesystem is not mounted; this collector uses unpinned maps and does not require it."
 fi
 
 # 6. Tools
@@ -64,20 +65,20 @@ for tool in clang llvm-strip bpftool python3; do
         fail "$tool is missing."
     fi
 done
-
-# 7. Python Dependencies
-if python3 -c "import cffi" &> /dev/null; then
-    pass "Python module 'cffi' is installed."
-else
-    fail "Python module 'cffi' is missing."
+if command -v bpftool &> /dev/null && ! bpftool version &> /dev/null; then
+    fail "bpftool is present but cannot run for this kernel. Install matching linux-tools or use a real bpftool binary."
 fi
 
-# 8. Cgroup V2
+# 7. Cgroup V2
 if mount | grep -q "cgroup2"; then
     pass "Cgroup V2 is enabled and mounted."
 else
-    warn "Cgroup V2 is not mounted. Identity-based scoping may degrade to PID filtering."
+    fail "Cgroup V2 is not mounted. Scoped native validation cannot run."
 fi
 
 echo "========================================"
-echo "Preflight complete."
+if [ "$FAILED" -gt 0 ]; then
+    echo "Preflight failed: $FAILED required check(s) missing."
+    exit 1
+fi
+echo "Preflight passed."

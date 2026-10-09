@@ -146,7 +146,7 @@ export const InterceptionDetails: React.FC<InterceptionDetailsProps> = ({ result
         </div>
         <div>
           <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Telemetry Source</h5>
-          <p className="text-gray-200">OS / Kernel Audit</p>
+          <p className="text-gray-200">{l3.execution_mode === 'SIMULATED' ? 'Replayed trace or Mock telemetry' : 'OS / Kernel Audit'}</p>
         </div>
         <div>
           <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Events Analyzed</h5>
@@ -167,7 +167,7 @@ export const InterceptionDetails: React.FC<InterceptionDetailsProps> = ({ result
   const renderL4Details = () => {
     const l4 = result.L4;
     if (!l4) return null;
-    
+
     // Visualize score if it exists
     const score = l4.ensemble_score ?? 0;
     const maxScore = 100;
@@ -179,8 +179,11 @@ export const InterceptionDetails: React.FC<InterceptionDetailsProps> = ({ result
         <div>
           <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Execution Mode</h5>
           <p className="text-blue-400 font-semibold">{l4.execution_mode}</p>
+          {l4.execution_mode === 'SYNTHETIC' && (
+            <p className="text-xs text-gray-500 mt-1">SYNTHETIC — Detector evaluated on synthetic/replayed data</p>
+          )}
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Isolation Forest</h5>
@@ -242,7 +245,20 @@ export const InterceptionDetails: React.FC<InterceptionDetailsProps> = ({ result
           <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Bayesian Risk</h5>
           <p className="text-gray-200 text-lg font-bold">{(l5.bayesian_probability ? l5.bayesian_probability * 100 : 0).toFixed(1)}%</p>
         </div>
-        
+
+        {l5.execution_mode === 'SIMULATED' && (
+          <>
+            <div>
+              <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Model</h5>
+              <p className="text-gray-200">Demonstration Heuristic</p>
+            </div>
+            <div>
+              <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Input Source</h5>
+              <p className="text-gray-200">Simulated demonstration events</p>
+            </div>
+          </>
+        )}
+
         {l5.highest_risk_path && (
           <div>
             <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Chain</h5>
@@ -286,7 +302,7 @@ export const InterceptionDetails: React.FC<InterceptionDetailsProps> = ({ result
           <h5 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Evidence Hash / Reference</h5>
           <p className="text-gray-300 font-mono text-sm bg-gray-900 p-2 rounded break-all">{l6.evidence_chain_reference}</p>
         </div>
-        
+
         <div className="bg-gray-900 p-4 rounded flex flex-col items-center text-xs font-mono text-gray-400 space-y-2 mt-4">
           <div className="border border-gray-700 p-2 rounded w-full text-center">Previous Hash</div>
           <ArrowDown className="w-4 h-4 text-gray-600" />
@@ -334,9 +350,15 @@ export const InterceptionDetails: React.FC<InterceptionDetailsProps> = ({ result
     switch (selectedLayerId) {
       case 'L1': return "Grammar/policy constraints rejected the requested action before it could proceed.";
       case 'L2': return "The command was normalized from an obfuscated representation to a restricted command and rejected by shell policy.";
-      case 'L3': return "Kernel telemetry identified the restricted syscall/resource access pattern.";
-      case 'L4': return "The observed action sequence diverged from the learned behavioral baseline.";
-      case 'L5': return "The temporal sequence produced excessive risk and triggered the governance decision.";
+      case 'L3': return result.L3?.execution_mode === 'SIMULATED'
+        ? "Simulated kernel telemetry matched the restricted syscall/resource access pattern."
+        : "Native kernel telemetry identified the restricted syscall/resource access pattern.";
+      case 'L4': return result.L4?.execution_mode === 'SYNTHETIC'
+        ? "The synthetic observed action sequence diverged from the learned behavioral baseline."
+        : "The observed runtime action sequence diverged from the learned behavioral baseline.";
+      case 'L5': return result.L5?.execution_mode === 'SIMULATED'
+        ? "The simulated temporal sequence produced excessive risk and triggered the governance decision."
+        : "The temporal sequence produced excessive risk and triggered the governance decision.";
       case 'L6': return "The cryptographic evidence chain detected a hash mismatch, indicating evidence tampering.";
       case 'L7': return "System integrity/attestation validation did not satisfy the trusted execution requirement.";
       default: return null;

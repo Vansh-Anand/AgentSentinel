@@ -22,8 +22,18 @@ export const EvidencePage: React.FC = () => {
       }, 3000);
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        evidence.refreshSessions();
+      }
+    };
+
     window.addEventListener('eces-new-session', handleNewSession);
-    return () => window.removeEventListener('eces-new-session', handleNewSession);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('eces-new-session', handleNewSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [evidence]);
 
   return (

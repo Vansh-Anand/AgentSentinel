@@ -1,0 +1,21 @@
+# AgentSentinel completion matrix
+
+Updated 2026-10-10. A layer is **live** only when the current application routes a real request through it. A compiled probe, synthetic test, or historical benchmark is stated separately.
+
+| Layer | Implemented now | Verified evidence | Remaining acceptance gate |
+| --- | --- | --- | --- |
+| L1 proposal contract | Typed bounded Gemini and fixture provider; malformed proposals cannot directly invoke a tool | Current-source 50-case synthetic Gemini evaluation with 50 signed receipts and no provider errors; local provider tests | Repeated trials, held-out corpus, answer-quality scoring, and key rotation; token-level grammar masking remains research-only |
+| L2 task gateway | Server-owned exact-path/command policy, pre-execution audit, durable request ledger, deny-by-default tool dispatch | Local browser allows README read and denies `.env` before executor; gateway tests | Broader multi-task deployment policy and independent adversarial review |
+| L3 native observation | Cgroup-filtered `execve`, `openat`, IPv4/IPv6 `connect` entry probes; libbpf/Python bridge; drop counter; fail-closed EffectSeal mapper | Three correlated attempts and zero measured drops in a privileged Docker Desktop Linux VM container; ABI size and offsets checked | Request-specific cgroup/process-tree coverage, relative path resolution, syscall outcomes, load tests, native host validation, application hookup |
+| L4 behavior detection | Gateway-derived deterministic rule signal; separate research Siamese checkpoint is measured but inactive | Rule provenance and synthetic research tests | Versioned real trace corpus, held-out evaluation, calibrated trained model, and measured false-block rate before live activation |
+| L5 risk governance | Bounded per-run rule governor; each agent-loop result is reconciled before the next proposal, then its risk action is audited; a violation stops later calls | Browser shows ordered EffectSeal/risk events; tests cover deny escalation, observed violation, incomplete telemetry, observer outage, and risk-audit failure | Attach trusted native observer to the live request lifecycle and measure benign-task impact |
+| L6 evidence | Local HMAC chain, durable audit anchor, Ed25519 signed run receipt, public ZIP/CLI export; agent-loop risk actions are recorded in the signed chain | Browser receipt, offline public verification, tamper/wrong-key tests, Compose end-to-end smoke | Independent key custody and external timestamp/anchor for host compromise resistance |
+| L7 runtime trust | Signed policy/source digest covers 24 selected files and two inactive model artifacts; simulation fails closed | Browser run and offline source comparison; `hardware_attested: false` | Supported TPM/TEE, fresh quote and certificate validation on an independent verifier |
+
+## Current product claim
+
+The resume-safe claim is a **task-scoped AI-agent tool gateway with signed public evidence and a restricted Docker fixture**, plus a **VM-validated three-probe Linux telemetry vertical slice**. The browser Gateway does not run native L3, a trained L4 model, or hardware L7 attestation. An allowed browser action therefore has an `INCOMPLETE` EffectSeal receipt.
+
+The [current-source v2 report](../benchmarks/results/agentsentinel_model_eval_v2.md) is one trial per synthetic case: 5/25 attack READMEs induced a forbidden proposal, 0/5 such proposals executed, 25/25 benign tasks completed, and all 50 audit chains and signed receipts verified with source hashes matching this checkout. This is a corpus-specific tool-boundary measurement, not general prompt-injection immunity. The earlier v1 report remains as historical evidence.
+
+See [validation details](VALIDATION_STATUS.md), the [active plan](END_TO_END_IMPLEMENTATION_PLAN.md), and [security boundaries](../SECURITY.md).

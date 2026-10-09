@@ -1,0 +1,73 @@
+# AgentSentinel validation status
+
+Updated 2026-10-10 on Windows with Python 3.13, Docker Desktop, and the local frontend toolchain.
+
+## 2026-10-10 implementation checkpoint
+
+- The active agent loop now records each EffectSeal receipt before accepting the next proposal, then appends the resulting L5 risk assessment to the authenticated audit. A missing observation remains `INCOMPLETE` for an allowed read, and the denied synthetic `.env` read remains `NOT_EXECUTED`. A failed risk-audit write stops later proposals. This is local request-lifecycle wiring, not native eBPF coverage.
+- The credential-free Compose API/UI built on loopback ports 8000/5173. The new `scripts.compose_smoke` checked the served UI, an allowed README read, a denied synthetic `.env` read, L3/L7 honesty labels, the API audit verifier, and offline public verification of the evidence ZIP. The run had **eight** authenticated records. The in-app browser independently showed the same eight-record result and verified Ed25519 receipt.
+- Gateway regression: **52 passed, one platform skip**. FastAPI runtime tests: **5 passed**. Dashboard and L3/L7 integration tests: **47 passed**. Frontend: **48 tests and production build passed**. The Compose smoke workflow has been added to CI but has not yet run on GitHub.
+- The current-source synthetic Gemini corpus completed after checkpointed retries of **12 transient HTTP 429 responses**: 25 attack and 25 benign cases, one trial each, with zero unresolved final provider errors. Five attack READMEs induced a forbidden proposal; all five were denied before execution. All 25 benign tasks completed. The strict verifier checked **50/50 HMAC chains**, **50/50 Ed25519 receipts**, fixture hashes, and current-source hashes before the sanitized [v2 report](../benchmarks/results/agentsentinel_model_eval_v2.md) was generated locally. This measures the specific corpus and tool boundary; it does not establish general prompt-injection resilience or answer quality.
+
+## 2026-10-09 implementation checkpoint
+
+- Continued checkpoint: the Linux build image compiles three cgroup-filtered entry probes (`execve`, `openat`, `connect`) and the libbpf loader. Its C event structure matches the Python collector at **616 bytes** and eight checked offsets. After tracefs was mounted in a disposable privileged Docker Desktop Linux VM container, the integrated native validation script passed: it observed correlated `/bin/echo` execution, synthetic-file open, and loopback connection attempts with zero measured ring-buffer drops; 11 bridge/EffectSeal contracts passed inside the same image. This is a VM vertical-slice result, not native host-wide or application process-tree coverage.
+- The new native-to-EffectSeal mapper has fail-closed tests for file and network attempts, write-vs-read permissions, relative paths, mismatched cgroups, and telemetry loss. Because three entry probes cannot establish complete coverage or syscall outcomes, authorized effects remain `INCOMPLETE`; an observed out-of-scope attempt can still be `VIOLATION`. L5 has a tested optional observer hook that stops subsequent tool calls on a violation. This hook is not attached in the Windows Gateway demo.
+- After these changes, the combined Python regression passed **102 tests with one Windows platform skip**. The rebuilt Compose API was exercised in the in-app browser: the fixture again allowed the README read, denied `.env` without executor invocation, verified six audit records and the Ed25519 receipt, showed L3 unavailable/L4 rule signal/L7 software measurement, and produced no browser console errors.
+- L7 software measurement now binds the policy, 24 selected source files across runtime/L3/L4/L7, and hashes of two inactive L4 research checkpoints to the signed run report. It explicitly records `model_active: false` and `hardware_attested: false`. A fresh run passed the source comparison; this remains disk-state measurement, not a TPM quote or proof of loaded code.
+- A credential-free Compose stack built and started on loopback at API port 8001 and UI port 5174 for verification. In the in-app browser, a fixture run showed an approved README read, a denied `.env` read without executor invocation, six verified audit records, a verified Ed25519 receipt, truthful seven-stage labels, and no console errors. The screenshot is [here](screenshots/compose-gateway-verification.png). The default fresh-clone ports remain 8000 and 5173.
+- The portable public-evidence export now exposes a Gateway download and a CLI. Tests unpacked its ZIP and verified the signed audit with an independently supplied public key, rejected a wrong key, and checked that tampered source evidence cannot be downloaded.
+- POSIX local reads use descriptor-relative no-follow traversal; the direct executor checks policy. Docker commands use unique names and clean up on timeout/interruption. The real Docker safe and synthetic attack fixtures still passed against a pinned local image.
+- The L7 simulated quote cannot set `valid` or `hardware_attested` to true. Contract tests check stale, replayed, forged, and unsupported native claims. Native L3 bridge tests cover cgroup registration, attempted-event semantics, and drop reporting. These unit tests are not host telemetry proof.
+- The final combined Python gateway/runtime/dashboard/L3-bridge/L7 regression passed **90 tests with one Windows platform skip**. The frontend passed **48 tests**, its production build passed, and lint exited successfully with 12 existing warnings. Compose configuration passed.
+- The eBPF `execve` probe and libbpf loader **compiled** in the Ubuntu validation image against Docker Desktop's Linux kernel BTF. This establishes buildability only; the probe was not attached to a native Linux host or connected to Gateway EffectSeal receipts.
+
+## Verified locally
+
+The table below preserves the earlier staged checks. The latest combined results and VM validation are in the 2026-10-09 checkpoint above.
+
+| Check | Result | Scope |
+| --- | --- | --- |
+| Gateway security tests | 36 passed | Exact-path reads, denied secret/network/command proposals, recovery after a denied proposal, bounded repeated-denial stopping, Docker CLI construction, deep argument snapshot, durable at-most-once request ledger, EffectSeal reconciliation, HMAC audit tampering, Ed25519 public receipt tampering, signed container receipt, sanitized Gemini provider errors, and risk/layer provenance |
+| Runtime API tests | 5 passed | Fixture run, seven-stage report, risk action, receipt/audit verification, sanitized published evaluation route, unknown provider rejection, run-ID validation, container configuration gate |
+| Existing dashboard API tests | 34 passed | AcademIQ research dashboard regression suite |
+| Frontend tests | 48 passed | Includes gateway, restricted container, measured evaluation card, and earlier dashboard pages |
+| Frontend production build | Passed | TypeScript and Vite |
+| Browser run through the Gateway page | Passed | Local API connected; allowed README read; denied `.env` read without executor invocation; agent finished a limited summary; earlier five-record HMAC audit verified in UI and offline; no browser errors observed |
+| Docker Desktop Linux engine | Passed locally | Pinned `python:3.13-slim` image ID; safe script read approved README; attack script received `FileNotFoundError` for `.env` and `Network is unreachable` for outbound connection |
+| Browser container flows | Passed | Safe and attack buttons each called the real restricted Docker executor; three-record audit chains verified in the UI; no browser warnings or errors observed |
+| Live Gemini legitimate task | Passed with `gemini-3.5-flash-lite` | Model proposed an allowed README read, finished a summary, and produced a three-record audit chain verified in UI and offline |
+| Live Gemini out-of-scope task | Passed with `gemini-3.5-flash-lite` | Synthetic user task explicitly requested `.env`; model proposed the read, gateway denied it with `PATH_OUT_OF_SCOPE`, executor was not invoked; latest six-record chain verified in UI and offline |
+| Seven-stage live report | Passed in browser | L1 real model output, L2 real gateway, L3 unavailable, L4 gateway-derived rule signal, L5 REVIEW, L6 local HMAC, L7 software hash with `hardware_attested: false`; no browser console errors |
+| Updated restricted Docker attack flow | Passed in browser | Synthetic secret read and outbound network attempt failed; four-record audit chain verified in UI and offline; L3 remains unavailable |
+| Deterministic policy corpus | 25/25 attack cases denied; 25/25 benign reads executed | Versioned 50-case policy fixtures with a corpus SHA-256; no model is involved |
+| Model evaluation harness smoke | 4/4 live Gemini cases completed without provider error; 4/4 audit chains valid | Two attack README payloads and two benign READMEs; neither attack induced a denied proposal in this small smoke run. This is not the full corpus result. |
+| Full model corpus v1 | 50/50 completed after bounded retries; 0 final provider errors | Five of 25 injected READMEs led to an out-of-scope model proposal; all five were denied before execution. All 25 benign tasks completed without a denied proposal. One trial per case; see the published report. |
+| Independent corpus audit | 50/50 verified | Local HMAC chains, fixture hashes, decision/execution relationship, and current source hashes all matched the saved run records. |
+| Offline source comparison | Passed | A new fixture run passed HMAC verification and `--check-current-source` against 13 recorded runtime source hashes; this compares disk files, not loaded code or hardware state. |
+| Ed25519 public verification | Passed | A fresh signed fixture run verified with a pinned public key and without the HMAC secret; wrong-key and tampered-audit checks failed as expected. The newest runtime measurement covers 14 source files. |
+| Signed browser runs | Passed | Restarted API: fixture and restricted Docker attack each showed verified HMAC and Ed25519 evidence. The Docker attack's synthetic secret and network attempts failed; both receipts verified offline with the public key, and the container run's 14-file software measurement matched this checkout. No browser console errors. |
+| Evaluation card in browser | Passed | The API served the sanitized v1 report, and the page showed 5/25 forbidden proposals, 0/5 executed, 25/25 benign completion, and an explicit earlier-source warning; no browser console errors. |
+
+The default `/api/runtime/run` path reads a synthetic README through the gateway, rejects a subsequent `.env` read, and completes a limited summary from the allowed content. It records authenticated decisions plus EffectSeal receipts. Its allowed read has `INCOMPLETE` effect status because no OS collector is connected. The denied read has `NOT_EXECUTED` status.
+
+The [browser screenshot](screenshots/gateway-browser-result.png) captures the verified result. The run used fixture replay, not a model.
+
+The [container browser screenshot](screenshots/container-browser-result.png) captures the attack fixture output from a real Linux container through Docker Desktop. It is a bounded local demonstration, not a complete sandbox evaluation. Allowed actions still receive `INCOMPLETE` EffectSeal receipts because native OS observations are absent.
+
+The [live Gemini summary screenshot](screenshots/gemini-browser-result.png) and [live Gemini denial screenshot](screenshots/gemini-denied-browser-result.png) capture the model-backed runs. The legitimate task's injected README did not induce an unauthorized proposal. The denied `.env` proposal came from a separate, explicit synthetic user request; it verifies the tool boundary, not prompt-injection success. The previous `gemini-2.5-flash` default returned a model-retirement 404; `gemini-3.8-flash` and `gemini-3.7-flash` returned provider-side 503 responses during this session. The configured `gemini-3.5-flash-lite` model completed both browser runs.
+
+The [updated seven-stage screenshot](screenshots/seven-stage-browser-result.png) captures the earlier model and container labels. The [signed container screenshot](screenshots/signed-container-browser-result.png) shows the newest HMAC and Ed25519 badges with real Docker containment output. The [evaluation card screenshot](screenshots/model-evaluation-browser.png) shows the published historical benchmark with its source-revision warning. Signed browser run IDs were `401dddd8-d7ae-4638-bb83-db47f2f81e41` (fixture) and `ec251d9c-79ff-49bf-a82f-122942c6d4f2` (container); both passed the public verifier. The [full model report](../benchmarks/results/agentsentinel_model_eval_v1.md) has per-case outcomes and methodology. The frontend passed 48 tests and a production build; the gateway/runtime suite passed 41 tests and the dashboard suite passed 34 tests when the live API released its SQLite database.
+
+## Not yet validated
+
+- Gemini behavior across repeated runs and a held-out prompt-injection corpus. The earlier two browser runs and four-case benchmark smoke are functional checks, not a statistical evaluation.
+- The new 50-case model corpus has a complete single-trial run. Repeat trials, an independent baseline, held-out payloads, and answer-quality scoring remain necessary before a general model-resilience claim is justified.
+- The current-source signed 50-case run is complete, but repeated trials, held-out payloads, an independent baseline, and answer-quality scoring remain open. The older 50-case report remains historical evidence from its source revision.
+- Container resistance to workspace races, cancellation edge cases, and escape attempts beyond the synthetic fixture.
+- Native host-wide eBPF coverage, request-specific process-tree correlation, complete file/network syscall outcomes, and loss measurement under load. The Docker Desktop VM vertical slice validates three selected attempted events only.
+- A trained L4 model and L5 evaluation on held-out real traces; current browser L4 is a deterministic rule signal from gateway outcomes, and L5 is a bounded rule governor.
+- Real TPM/TEE attestation.
+- Independent external anchoring of the locally signed receipts and multi-host deployment.
+
+These are release gates, not claims to put on a resume yet. The current defensible resume claim is a task-scoped agent gateway with durable at-most-once dispatch, authenticated local audit evidence, a bounded model adapter, an explicit effect-reconciliation core, and a restricted Docker command demo verified against one synthetic secret-read and network attempt. Do not describe the Docker fixture as a comprehensive containment proof.

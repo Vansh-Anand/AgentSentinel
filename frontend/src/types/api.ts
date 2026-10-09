@@ -84,12 +84,12 @@ export interface MetricQueryResponse {
 
 export interface ChatResponse {
   assistant_message: string;
-  provider: string;
   tool_call?: {
     name: string;
     arguments: Record<string, any>;
-  };
-  pipeline_result?: PipelineRunResponse;
+  } | null;
+  pipeline_result?: PipelineRunResponse | null;
+  provider?: string;
 }
 
 export interface L1Outcome {

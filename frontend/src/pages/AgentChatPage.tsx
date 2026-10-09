@@ -8,7 +8,7 @@ import { ErrorState } from '../components/common/ErrorState';
 import { Shield, Send, Terminal, Cpu, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 const getVerdictReason = (layer: string, decision: string) => {
-  if (decision === 'ALLOW') return 'No malicious intent or policy violations detected across the pipeline.';
+  if (decision === 'ALLOW') return 'The research pipeline returned ALLOW; consult each layer’s execution mode for its validation scope.';
   switch (layer) {
     case 'L1': return 'Action violates allowed grammar/policy constraints.';
     case 'L2': return 'Obfuscated command normalized and rejected by semantic policy.';
@@ -22,15 +22,15 @@ const getVerdictReason = (layer: string, decision: string) => {
 };
 
 const getExecutionModeDisplay = (layer: string, decision: string) => {
-  if (decision === 'ALLOW') return { mode: 'REAL_RUNTIME', desc: 'All evaluated layers' };
+  if (decision === 'ALLOW') return { mode: 'SIMULATED', desc: 'Execution spanned simulated layers (L3-L5)' };
   switch (layer) {
-    case 'L1': return { mode: 'REAL_RUNTIME', desc: 'Native Grammar-Constrained Decoding' };
-    case 'L2': return { mode: 'REAL_RUNTIME', desc: 'Native Semantic Deobfuscation' };
-    case 'L3': return { mode: 'SIMULATED', desc: 'Demonstration simulation — not native runtime detection.' };
-    case 'L4': return { mode: 'SYNTHETIC', desc: 'Demonstration simulation — not native runtime detection.' };
-    case 'L5': return { mode: 'SIMULATED', desc: 'Demonstration simulation — not native runtime detection.' };
-    case 'L6': return { mode: 'REAL_RUNTIME', desc: 'Native Cryptographic Chain' };
-    case 'L7': return { mode: 'UNAVAILABLE', desc: 'Demonstration simulation — not native runtime detection.' };
+    case 'L1': return { mode: 'REAL_RUNTIME', desc: 'Post-generation grammar check in the research route; not generation-time constrained decoding.' };
+    case 'L2': return { mode: 'REAL_RUNTIME', desc: 'Semantic policy check in the research route; this route does not execute the proposed tool.' };
+    case 'L3': return { mode: 'SIMULATED', desc: 'Simulated telemetry replay or mock execution.' };
+    case 'L4': return { mode: 'SYNTHETIC', desc: 'Detector evaluated on synthetic benchmark data.' };
+    case 'L5': return { mode: 'SIMULATED', desc: 'Demonstration heuristic, not live Bayesian inference.' };
+    case 'L6': return { mode: 'REAL_RUNTIME', desc: 'Local ECES prototype; stable public-key verification is not part of this route.' };
+    case 'L7': return { mode: 'UNAVAILABLE', desc: 'Hardware attestation unavailable.' };
     default: return { mode: 'UNKNOWN', desc: '' };
   }
 };
@@ -52,10 +52,10 @@ export const AgentChatPage: React.FC = () => {
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center">
           <Cpu className="w-6 h-6 mr-2 text-indigo-600" />
-          Live AI Agent Demonstration
+          AcademIQ Research Agent Demonstration
         </h2>
         <p className="mt-2 text-gray-600">
-          Natural-language AI actions are intercepted and evaluated by the AcademIQ 7-layer security pipeline.
+          This earlier AcademIQ route visualizes the seven-layer research pipeline; later-layer outcomes may be simulated. Use AgentSentinel Gateway for actual tool execution decisions.
         </p>
       </div>
       
@@ -99,9 +99,8 @@ export const AgentChatPage: React.FC = () => {
             </div>
             
             <div className="p-4 flex-1 overflow-y-auto space-y-6 bg-gray-50">
-              {/* Examples if idle */}
-              {!execution.agentResponse && !execution.isAgentThinking && (
-                <div className="text-sm text-gray-500 bg-white p-4 rounded border border-gray-200 shadow-sm">
+              {/* Demo Prompt Suggestions always available */}
+              <div className="text-sm text-gray-500 bg-white p-4 rounded border border-gray-200 shadow-sm">
                   <p className="font-semibold text-gray-700 mb-3">Demo Prompt Suggestions:</p>
                   <div className="space-y-2">
                     <button onClick={() => setInstruction("Read the demo report file.")} className="w-full text-left p-2 rounded bg-gray-50 hover:bg-indigo-50 border border-gray-200 text-xs">
@@ -121,7 +120,6 @@ export const AgentChatPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              )}
 
               {execution.isAgentThinking && (
                 <div className="flex justify-center p-6">
@@ -220,34 +218,41 @@ export const AgentChatPage: React.FC = () => {
                               </span>
                             </div>
                             
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4 border-t border-gray-800/50 pt-4">
+                            {/* SECONDARY */}
+                            <div className="grid grid-cols-1 gap-4 text-sm mb-4 border-t border-gray-800/50 pt-4">
                               <div>
                                 <span className="block text-gray-500 font-semibold mb-1">Stopping Layer</span>
                                 <span className="text-gray-200 font-mono bg-gray-900 px-2 py-1 rounded">
                                   {execution.result.stopping_layer}
                                 </span>
                               </div>
-                              <div>
-                                <span className="block text-gray-500 font-semibold mb-1">Execution Mode</span>
-                                <span className="text-blue-400 font-bold">
-                                  {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).mode}
+                              <div className="bg-gray-900/50 p-3 rounded text-sm border border-gray-800/50">
+                                <span className="block text-gray-500 font-semibold mb-1 flex items-center">
+                                  <Shield className="w-4 h-4 mr-1" />
+                                  Security Reason
                                 </span>
+                                <p className="text-gray-300">
+                                  {getVerdictReason(execution.result.stopping_layer, execution.result.overall_decision)}
+                                </p>
                               </div>
                             </div>
                             
-                            <div className="bg-gray-900/50 p-3 rounded text-sm">
-                              <span className="block text-gray-500 font-semibold mb-1">Reason</span>
-                              <p className="text-gray-300">
-                                {getVerdictReason(execution.result.stopping_layer, execution.result.overall_decision)}
-                              </p>
+                            {/* DETAIL */}
+                            <div className="border-t border-gray-800/50 pt-4 mt-2">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Technical Details</h4>
+                              <div>
+                                <span className="block text-gray-500 font-semibold text-xs mb-1">Execution Mode</span>
+                                <span className="text-blue-400 font-bold text-sm">
+                                  {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).mode}
+                                </span>
+                                {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).desc && (
+                                  <p className="mt-2 text-xs font-medium text-gray-400 italic flex items-start bg-gray-900/30 p-2 rounded">
+                                    <AlertTriangle className="w-3 h-3 mr-1.5 mt-0.5 shrink-0" />
+                                    <span>{getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).desc}</span>
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            
-                            {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).mode !== 'REAL_RUNTIME' && (
-                              <p className="mt-3 text-xs font-semibold text-gray-400 italic flex items-center">
-                                <AlertTriangle className="w-3 h-3 mr-1" />
-                                {getExecutionModeDisplay(execution.result.stopping_layer, execution.result.overall_decision).desc}
-                              </p>
-                            )}
                           </div>
                         </div>
                       </div>

@@ -23,10 +23,10 @@ export const ExecutionModeBadge: React.FC<ExecutionModeBadgeProps> = ({ mode, cl
 
   const labels: Record<string, string> = {
     [ExecutionMode.REAL_RUNTIME]: 'REAL RUNTIME',
-    [ExecutionMode.SIMULATED]: 'SIMULATED',
-    [ExecutionMode.BENCHMARK]: 'BENCHMARK',
-    [ExecutionMode.SYNTHETIC]: 'SYNTHETIC',
-    [ExecutionMode.UNAVAILABLE]: 'UNAVAILABLE',
+    [ExecutionMode.SIMULATED]: 'SIMULATED (Demonstration)',
+    [ExecutionMode.BENCHMARK]: 'BENCHMARK (Dataset)',
+    [ExecutionMode.SYNTHETIC]: 'SYNTHETIC (Benchmark data)',
+    [ExecutionMode.UNAVAILABLE]: 'UNAVAILABLE (Native dependency)',
   };
 
   return (

@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AGENTSENTINEL_UI_ORIGIN: http://127.0.0.1:${AGENTSENTINEL_UI_PORT:-5173}
+    ports:
+      - "127.0.0.1:${AGENTSENTINEL_API_PORT:-8000}:8000"
+    volumes:
+      - evidence:/app/.data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  ui:
+    build:
+      context: ./frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: http://127.0.0.1:${AGENTSENTINEL_API_PORT:-8000}
+    ports:
+      - "127.0.0.1:${AGENTSENTINEL_UI_PORT:-5173}:5173"
+
+volumes:
+  evidence:

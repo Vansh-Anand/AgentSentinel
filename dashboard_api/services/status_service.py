@@ -34,7 +34,8 @@ class StatusService:
 
     @classmethod
     def _check_database(cls) -> Tuple[str, bool]:
-        db_path = ".data/evidence/eces.db"
+        from l6_eces.storage.sqlite_store import DEFAULT_DB_PATH
+        db_path = DEFAULT_DB_PATH
         if not os.path.exists(db_path):
             return "UNAVAILABLE", False
         
@@ -117,7 +118,7 @@ class StatusService:
                 layer_id="L5",
                 name="Bayesian RiskChain Correlation",
                 operational_status="OPERATIONAL",
-                execution_mode=ExecutionMode.BENCHMARK,
+                execution_mode=ExecutionMode.SIMULATED,
                 description="Analyzes attack causal chains and tracks cross-session replays.",
                 capabilities=["RiskChainGraph", "BayesianRiskModel", "GovernanceEngine", "RiskPathAnalyzer", "CrossSessionReplayDetector"],
                 limitations=["Evaluated primarily in benchmark modes."]

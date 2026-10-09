@@ -33,6 +33,14 @@ struct syscall_event_t {
     
     /* Payload / args string */
     char arg_payload[256];
+
+    /* Added without changing the prefix consumed by earlier collectors. */
+    unsigned short addr_family;
+    unsigned short port_be;
+    unsigned char address[16];
+    unsigned int open_flags;
+    int dirfd;
+    unsigned char address_valid;
 };
 
 #endif /* __ACADEMIQ_EVENTS_H */

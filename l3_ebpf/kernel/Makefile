@@ -7,7 +7,11 @@ BPF_TARGET = bpf
 
 all: execve.bpf.o libnative_loader.so
 
-execve.bpf.o: execve.bpf.c events.h
+vmlinux.h:
+	bpftool btf dump file /sys/kernel/btf/vmlinux format c > $@.tmp
+	mv $@.tmp $@
+
+execve.bpf.o: execve.bpf.c events.h vmlinux.h
 	$(CLANG) -g -O2 -target $(BPF_TARGET) -D__TARGET_ARCH_x86 -c $< -o $@
 	$(LLVM_STRIP) -g $@
 

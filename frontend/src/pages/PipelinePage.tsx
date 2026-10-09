@@ -24,15 +24,15 @@ const getVerdictReason = (layer: string, decision: string) => {
 };
 
 const getExecutionModeDisplay = (layer: string, decision: string) => {
-  if (decision === 'ALLOW') return { mode: 'REAL_RUNTIME', desc: 'All evaluated layers' };
+  if (decision === 'ALLOW') return { mode: 'SIMULATED', desc: 'Execution spanned simulated layers (L3-L5)' };
   switch (layer) {
     case 'L1': return { mode: 'REAL_RUNTIME', desc: 'Native Grammar-Constrained Decoding' };
     case 'L2': return { mode: 'REAL_RUNTIME', desc: 'Native Semantic Deobfuscation' };
-    case 'L3': return { mode: 'SIMULATED', desc: 'Demonstration simulation — not native runtime detection.' };
-    case 'L4': return { mode: 'SYNTHETIC', desc: 'Demonstration simulation — not native runtime detection.' };
-    case 'L5': return { mode: 'SIMULATED', desc: 'Demonstration simulation — not native runtime detection.' };
+    case 'L3': return { mode: 'SIMULATED', desc: 'Simulated telemetry replay or mock execution.' };
+    case 'L4': return { mode: 'SYNTHETIC', desc: 'Detector evaluated on synthetic benchmark data.' };
+    case 'L5': return { mode: 'SIMULATED', desc: 'Demonstration heuristic, not live Bayesian inference.' };
     case 'L6': return { mode: 'REAL_RUNTIME', desc: 'Native Cryptographic Chain' };
-    case 'L7': return { mode: 'UNAVAILABLE', desc: 'Demonstration simulation — not native runtime detection.' };
+    case 'L7': return { mode: 'UNAVAILABLE', desc: 'Hardware attestation unavailable.' };
     default: return { mode: 'UNKNOWN', desc: '' };
   }
 };

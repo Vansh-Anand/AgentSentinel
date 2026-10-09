@@ -38,9 +38,11 @@ def test_simulation_attestation_flow():
     
     # 3. Verify
     result = verifier.verify(evidence, challenge.nonce)
-    assert result.valid is True
+    assert result.valid is False
+    assert result.hardware_attested is False
+    assert result.simulation_valid is True
     assert result.measurement_match is True
-    assert result.signature_valid is True
+    assert result.signature_valid is False
 
 def test_attestation_expired_challenge():
     manifest = SecurityArtifactManifest(
@@ -77,6 +79,36 @@ def test_attestation_wrong_measurement():
     result = verifier.verify(evidence, challenge.nonce)
     assert result.valid is False
     assert result.measurement_match is False
+
+
+def test_forged_simulation_quote_is_rejected():
+    verifier = AttestationVerifier(expected_measurement="known")
+    challenge = verifier.create_challenge()
+    evidence = SimulationTEEProvider("known").get_attestation(challenge.nonce)
+    result = verifier.verify(evidence.model_copy(update={"quote_reference": "forged"}), challenge.nonce)
+    assert result.valid is False
+    assert result.simulation_valid is False
+
+
+def test_stale_evidence_and_replayed_nonce_are_rejected():
+    verifier = AttestationVerifier(expected_measurement="known")
+    challenge = verifier.create_challenge()
+    evidence = SimulationTEEProvider("known").get_attestation(challenge.nonce)
+    stale = verifier.verify(evidence.model_copy(update={"timestamp": challenge.issued_at - 60}),
+                            challenge.nonce)
+    assert stale.fresh is False
+    assert verifier.verify(evidence, challenge.nonce).fresh is False
+
+
+def test_unverified_native_quote_never_claims_hardware_attestation():
+    verifier = AttestationVerifier(expected_measurement="known")
+    challenge = verifier.create_challenge()
+    evidence = SimulationTEEProvider("known").get_attestation(challenge.nonce)
+    claimed_native = evidence.model_copy(update={"attestation_type": "TDX_QUOTE", "platform": "Intel TDX"})
+    result = verifier.verify(claimed_native, challenge.nonce)
+    assert result.valid is False
+    assert result.hardware_attested is False
+    assert result.signature_valid is False
 
 def test_domain_isolation():
     agent = AgentDomain(agent_id="test_agent", namespace_ids=["ns1"], policy_id="pol1", cgroup_id=None, root_pid=None)

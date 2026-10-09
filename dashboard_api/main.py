@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import health, experiments, pipeline, evidence, status, agent
+import os
+from .routers import health, experiments, pipeline, evidence, status, agent, runtime
 
 app = FastAPI(
     title="AcademIQ Dashboard API",
@@ -11,7 +12,8 @@ app = FastAPI(
 # Configure CORS for local React/Vite development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173",
+                   os.environ.get("AGENTSENTINEL_UI_ORIGIN", "http://127.0.0.1:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +26,7 @@ app.include_router(experiments.router, prefix="/api/experiments", tags=["experim
 app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
 app.include_router(evidence.router, prefix="/api/evidence", tags=["evidence"])
 app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
+app.include_router(runtime.router, prefix="/api/runtime", tags=["runtime"])
 
 @app.get("/")
 def read_root():

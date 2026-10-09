@@ -12,6 +12,7 @@ export interface ChatResponse {
     arguments: Record<string, any>;
   } | null;
   pipeline_result?: PipelineRunResponse | null;
+  provider?: string;
 }
 
 export const sendChatMessage = async (message: string): Promise<ChatResponse> => {

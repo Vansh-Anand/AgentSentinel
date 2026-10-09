@@ -64,7 +64,7 @@ def setup_mock_db(tmp_path, monkeypatch):
     
     # Inject db path by modifying the service instance directly
     from dashboard_api.routers.evidence import service as evidence_service
-    monkeypatch.setattr(evidence_service, "db_path", db_path)
+    monkeypatch.setattr(evidence_service, "_db_path", db_path)
     
     # Mock verify to bypass the random key problem
     monkeypatch.setattr(SoftwareSigner, "verify", lambda self, data, sig: True)

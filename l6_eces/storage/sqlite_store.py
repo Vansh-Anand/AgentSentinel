@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Any
 from l6_eces.chain.schemas import EvidenceRecord, GenesisRecord, ChainHead
 from l6_eces.chain.store import EvidenceStore
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DEFAULT_DB_PATH = os.path.join(BASE_DIR, ".data", "evidence", "eces.db")
 
 class SQLiteEvidenceStore(EvidenceStore):
@@ -15,8 +15,8 @@ class SQLiteEvidenceStore(EvidenceStore):
     Append-only durable evidence store using SQLite3.
     Enforces application-level append-only constraints and DB-level Unique constraints.
     """
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None):
+        self.db_path = db_path or os.environ.get("AGENTSENTINEL_ECES_DB_PATH", DEFAULT_DB_PATH)
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._lock = threading.Lock()
         self._init_db()
