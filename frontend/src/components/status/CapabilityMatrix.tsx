@@ -11,7 +11,7 @@ export const CapabilityMatrix: React.FC<Props> = ({ capabilities }) => {
     { label: 'AVAILABLE / IMPLEMENTED', items: capabilities.filter(c => c.execution_mode === 'REAL_RUNTIME') },
     { label: 'SIMULATED / DEMONSTRATION', items: capabilities.filter(c => c.execution_mode === 'SIMULATED') },
     { label: 'SYNTHETIC / BENCHMARK', items: capabilities.filter(c => c.execution_mode === 'SYNTHETIC' || c.execution_mode === 'BENCHMARK') },
-    { label: 'UNAVAILABLE / NATIVE DEPENDENCY', items: capabilities.filter(c => c.execution_mode === 'UNAVAILABLE') }
+    { label: 'UNAVAILABLE / DEPENDENCY', items: capabilities.filter(c => c.execution_mode === 'UNAVAILABLE') }
   ].filter(g => g.items.length > 0);
 
   return (

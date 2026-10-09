@@ -89,7 +89,7 @@ describe('SystemStatusPage Tests', () => {
     render(<SystemStatusPage />);
     
     await waitFor(() => {
-      expect(screen.getByText(/AcademIQ System Status/i)).toBeInTheDocument();
+      expect(screen.getByText(/AgentSentinel System Status/i)).toBeInTheDocument();
     });
 
     expect(screen.getByText('API v1.0.0')).toBeInTheDocument();

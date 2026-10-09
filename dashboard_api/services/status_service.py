@@ -17,8 +17,9 @@ class StatusService:
         # Determine overall status
         overall_status = "PARTIALLY OPERATIONAL"
         overall_description = (
-            "Core application security layers and research components are operational. "
-            "Native Linux eBPF telemetry and native OS isolation are not active in the current Windows environment."
+            f"Research ECES SQLite storage is {database_status.lower()}. "
+            "Native eBPF telemetry and hardware attestation are not attached to this deployment. "
+            "The gateway's separate signed audit is shown on the Gateway page."
         )
 
         return SystemStatusResponse(
@@ -28,14 +29,14 @@ class StatusService:
             overall_status=overall_status,
             overall_description=overall_description,
             infrastructure=cls._get_infrastructure(eces_ok),
-            layers=cls._get_layers(),
-            capabilities=cls._get_capabilities()
+            layers=cls._get_layers(eces_ok),
+            capabilities=cls._get_capabilities(eces_ok)
         )
 
     @classmethod
     def _check_database(cls) -> Tuple[str, bool]:
         from l6_eces.storage.sqlite_store import DEFAULT_DB_PATH
-        db_path = DEFAULT_DB_PATH
+        db_path = os.environ.get("AGENTSENTINEL_ECES_DB_PATH", DEFAULT_DB_PATH)
         if not os.path.exists(db_path):
             return "UNAVAILABLE", False
         
@@ -58,8 +59,8 @@ class StatusService:
             InfrastructureStatus(
                 name="ECES SQLite Database",
                 status="OPERATIONAL" if eces_ok else "UNAVAILABLE",
-                execution_mode=ExecutionMode.REAL_RUNTIME,
-                description="Durable append-only evidence storage."
+                execution_mode=ExecutionMode.REAL_RUNTIME if eces_ok else ExecutionMode.UNAVAILABLE,
+                description="Research pipeline SQLite evidence storage."
             ),
             InfrastructureStatus(
                 name="Pipeline Engine",
@@ -76,7 +77,7 @@ class StatusService:
         ]
 
     @classmethod
-    def _get_layers(cls) -> List[LayerSystemStatus]:
+    def _get_layers(cls, eces_ok: bool) -> List[LayerSystemStatus]:
         return [
             LayerSystemStatus(
                 layer_id="L1",
@@ -101,16 +102,16 @@ class StatusService:
                 name="Runtime Telemetry",
                 operational_status="PARTIAL",
                 execution_mode=ExecutionMode.SIMULATED,
-                description="Collects execution context and OS telemetry.",
+                description="Replays execution context and OS telemetry for the research demo.",
                 capabilities=["JSONL telemetry replay", "ExecutionCorrelationManager"],
-                limitations=["Native eBPF kernel probes unavailable on current Windows host."]
+                limitations=["No native eBPF collector is attached to this API process."]
             ),
             LayerSystemStatus(
                 layer_id="L4",
                 name="Behavioral Divergence",
                 operational_status="PARTIAL",
                 execution_mode=ExecutionMode.SYNTHETIC,
-                description="Detects anomalous behaviors using ML models.",
+                description="Benchmarks anomaly detection on synthetic traces.",
                 capabilities=["Isolation Forest", "Siamese Recurrent Autoencoder", "CUSUM adaptive recalibration"],
                 limitations=["Models trained on synthetic benchmarks.", "No real-time continuous deployment active."]
             ),
@@ -119,32 +120,33 @@ class StatusService:
                 name="Bayesian RiskChain Correlation",
                 operational_status="OPERATIONAL",
                 execution_mode=ExecutionMode.SIMULATED,
-                description="Analyzes attack causal chains and tracks cross-session replays.",
+                description="Evaluates attack causal chains and cross-session replay in research mode.",
                 capabilities=["RiskChainGraph", "BayesianRiskModel", "GovernanceEngine", "RiskPathAnalyzer", "CrossSessionReplayDetector"],
                 limitations=["Evaluated primarily in benchmark modes."]
             ),
             LayerSystemStatus(
                 layer_id="L6",
-                name="ECES Evidence",
-                operational_status="OPERATIONAL",
-                execution_mode=ExecutionMode.REAL_RUNTIME,
-                description="Generates verifiable cryptographic evidence chains.",
+                name="Research ECES Evidence",
+                operational_status="OPERATIONAL" if eces_ok else "UNAVAILABLE",
+                execution_mode=ExecutionMode.REAL_RUNTIME if eces_ok else ExecutionMode.UNAVAILABLE,
+                description="Stores the research pipeline's evidence in SQLite; separate from gateway signed audit.",
                 capabilities=["ECES hash chain", "SQLite durable evidence store", "Chain verification utility"],
-                limitations=["Single-node deployment without external blockchain anchoring."]
+                limitations=["Single-node deployment without an independent external anchor."] if eces_ok else
+                            ["No readable research ECES SQLite database is present in this deployment."]
             ),
             LayerSystemStatus(
                 layer_id="L7",
                 name="Agent Isolation",
                 operational_status="UNAVAILABLE",
                 execution_mode=ExecutionMode.UNAVAILABLE,
-                description="Enforces OS-level agent containment boundaries.",
+                description="Native OS-level containment is inactive in this deployment.",
                 capabilities=["AgentScopeManager API"],
-                limitations=["cgroup/namespace isolation not supported on Windows.", "Native OS-level isolation is not active."]
+                limitations=["Native OS-level isolation is not active in this deployment."]
             )
         ]
 
     @classmethod
-    def _get_capabilities(cls) -> List[CapabilityStatus]:
+    def _get_capabilities(cls, eces_ok: bool) -> List[CapabilityStatus]:
         return [
             CapabilityStatus(
                 name="Prompt Injection Defense",
@@ -178,9 +180,9 @@ class StatusService:
             ),
             CapabilityStatus(
                 name="ECES Persistence",
-                status="Operational",
-                validation_level="SQLite verification",
-                execution_mode=ExecutionMode.REAL_RUNTIME
+                status="Operational" if eces_ok else "Unavailable",
+                validation_level="SQLite connection check" if eces_ok else "No readable database",
+                execution_mode=ExecutionMode.REAL_RUNTIME if eces_ok else ExecutionMode.UNAVAILABLE
             ),
             CapabilityStatus(
                 name="Native eBPF",

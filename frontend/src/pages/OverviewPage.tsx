@@ -18,7 +18,7 @@ export const OverviewPage: React.FC = () => {
   }
 
   if (statusLoading || expLoading || evLoading) {
-    return <LoadingState message="Initializing AcademIQ Dashboard..." />;
+    return <LoadingState message="Initializing AgentSentinel Dashboard..." />;
   }
 
   if (!status) return null;
@@ -26,7 +26,7 @@ export const OverviewPage: React.FC = () => {
   return (
     <div className="space-y-8 pb-32">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">AcademIQ System Overview</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">AgentSentinel System Overview</h2>
         <p className="mt-2 text-slate-600 dark:text-slate-400">
           High-level summary of the multi-layer AI agent security system capabilities and execution modes in this environment.
         </p>

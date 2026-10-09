@@ -24,10 +24,10 @@ export const SystemStatusPage: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center">
             <ShieldCheck className="w-6 h-6 mr-2 text-indigo-500" />
-            AcademIQ System Status
+            AgentSentinel System Status
           </h2>
           <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Real-time architectural health, native capability availability, and validation modes.
+            Deployment capabilities and validation modes, with inactive dependencies shown explicitly.
           </p>
         </div>
         

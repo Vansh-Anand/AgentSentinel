@@ -86,7 +86,7 @@ export const ExperimentsPage: React.FC = () => {
             <FlaskConical className="w-6 h-6 mr-2 text-purple-600" />
             Research Benchmark Results
           </h2>
-          <p className="mt-2 text-gray-600">Explore standardized security performance and latency benchmarks for AcademIQ.</p>
+          <p className="mt-2 text-gray-600">Explore security performance and latency benchmarks for AgentSentinel.</p>
         </div>
       </div>
 

@@ -23,7 +23,7 @@ describe('PipelinePage Tests', () => {
   it('renders Pipeline Idle state initially', () => {
     render(<MemoryRouter><PipelinePage /></MemoryRouter>);
     expect(screen.getByText('Pipeline Idle')).toBeInTheDocument();
-    expect(screen.getAllByText('AcademIQ Security Pipeline').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('AgentSentinel Research Pipeline').length).toBeGreaterThan(0);
   });
 
   it('handles scenario selection and displays attack payload', () => {

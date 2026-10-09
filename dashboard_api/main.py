@@ -4,8 +4,8 @@ import os
 from .routers import health, experiments, pipeline, evidence, status, agent, runtime
 
 app = FastAPI(
-    title="AcademIQ Dashboard API",
-    description="Backend API for AcademIQ Dashboard",
+    title="AgentSentinel Dashboard API",
+    description="Backend API for the AgentSentinel Dashboard",
     version="1.0.0"
 )
 
@@ -30,4 +30,4 @@ app.include_router(runtime.router, prefix="/api/runtime", tags=["runtime"])
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to AcademIQ Dashboard API"}
+    return {"message": "Welcome to AgentSentinel Dashboard API"}

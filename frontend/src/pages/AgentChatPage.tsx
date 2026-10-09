@@ -52,10 +52,10 @@ export const AgentChatPage: React.FC = () => {
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center">
           <Cpu className="w-6 h-6 mr-2 text-indigo-600" />
-          AcademIQ Research Agent Demonstration
+          AgentSentinel Research Agent Demonstration
         </h2>
         <p className="mt-2 text-gray-600">
-          This earlier AcademIQ route visualizes the seven-layer research pipeline; later-layer outcomes may be simulated. Use AgentSentinel Gateway for actual tool execution decisions.
+          This research route visualizes the seven-layer pipeline; later-layer outcomes may be simulated. Use AgentSentinel Gateway for actual tool execution decisions.
         </p>
       </div>
       

@@ -12,7 +12,7 @@ export const LayerStatusGrid: React.FC<Props> = ({ layers }) => {
     { label: 'AVAILABLE / IMPLEMENTED', items: layers.filter(l => l.execution_mode === 'REAL_RUNTIME') },
     { label: 'SIMULATED / DEMONSTRATION', items: layers.filter(l => l.execution_mode === 'SIMULATED') },
     { label: 'SYNTHETIC / BENCHMARK', items: layers.filter(l => l.execution_mode === 'SYNTHETIC' || l.execution_mode === 'BENCHMARK') },
-    { label: 'UNAVAILABLE / NATIVE DEPENDENCY', items: layers.filter(l => l.execution_mode === 'UNAVAILABLE') }
+    { label: 'UNAVAILABLE / DEPENDENCY', items: layers.filter(l => l.execution_mode === 'UNAVAILABLE') }
   ].filter(g => g.items.length > 0);
 
   return (

@@ -54,7 +54,7 @@ export const PipelinePage: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center">
             <Shield className="w-6 h-6 mr-2 text-blue-600" />
-            AcademIQ Security Pipeline
+            AgentSentinel Research Pipeline
           </h2>
           <p className="mt-2 text-gray-600">Simulate and visualize adversarial scenarios through the L1-L7 defense layers in real-time.</p>
         </div>

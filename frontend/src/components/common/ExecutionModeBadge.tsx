@@ -26,7 +26,7 @@ export const ExecutionModeBadge: React.FC<ExecutionModeBadgeProps> = ({ mode, cl
     [ExecutionMode.SIMULATED]: 'SIMULATED (Demonstration)',
     [ExecutionMode.BENCHMARK]: 'BENCHMARK (Dataset)',
     [ExecutionMode.SYNTHETIC]: 'SYNTHETIC (Benchmark data)',
-    [ExecutionMode.UNAVAILABLE]: 'UNAVAILABLE (Native dependency)',
+    [ExecutionMode.UNAVAILABLE]: 'UNAVAILABLE (Dependency)',
   };
 
   return (
