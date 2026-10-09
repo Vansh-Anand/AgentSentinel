@@ -10,6 +10,11 @@ from typing import Mapping
 from .policy import TaskPolicy
 
 
+_HAS_FD_RELATIVE_OPENS = (
+    os.name == "posix" and hasattr(os, "O_NOFOLLOW") and os.open in os.supports_dir_fd
+)
+
+
 class LocalReadOnlyExecutor:
     """Read allowlisted files; never run commands or make network requests.
 
@@ -24,7 +29,7 @@ class LocalReadOnlyExecutor:
         if not policy.decide(tool_name, arguments).allowed:
             raise PermissionError("file is not in task policy")
         relative = str(arguments["path"])
-        if os.name == "posix" and hasattr(os, "O_NOFOLLOW") and os.open in os.supports_dir_fd:
+        if _HAS_FD_RELATIVE_OPENS:
             return self._read_posix(relative, policy)
         return self._read_portable_demo(relative, policy)
 

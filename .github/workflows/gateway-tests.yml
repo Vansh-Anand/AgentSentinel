@@ -74,8 +74,10 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install "cryptography>=42,<51"
+      - name: Build credential-free API and UI
+        run: docker compose build
       - name: Start credential-free API and UI
-        run: docker compose up --build -d
+        run: docker compose up --no-build -d
       - name: Verify gateway, UI, and portable signed evidence
         run: python -m scripts.compose_smoke
       - name: Show service logs on failure
