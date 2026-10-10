@@ -101,8 +101,8 @@ Orders 1, 2, and 8 can produce a strong internship portfolio release **without w
 
 ### Final acceptance checklist
 
-- [ ] Fresh clone starts the credential-free app and passes `python -m scripts.compose_smoke`.
-- [ ] Browser and API show the same allowed/denied decisions, audit status, EffectSeal status and seven-layer availability.
+- [x] A fresh local clone of `5418fdb` started the credential-free app and passed `python -m scripts.compose_smoke` on 2026-10-11.
+- [x] Browser and API showed the same allowed/denied decisions, verified audit/receipt, `INCOMPLETE`/`NOT_EXECUTED` EffectSeal status and seven-layer availability in that clone.
 - [ ] Held-out repeated model evaluation reports both blocked side effects and useful benign completion, including failures and uncertainty.
 - [ ] Restricted Docker fixture passes race, cancellation and cleanup checks on a named host.
 - [ ] Native L3 is live only after request-scoped observation and complete-effect gates pass on supported Linux; otherwise it remains `INCOMPLETE`/unavailable.
