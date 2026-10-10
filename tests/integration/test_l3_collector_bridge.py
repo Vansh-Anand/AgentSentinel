@@ -3,6 +3,7 @@
 import unittest
 import ctypes
 import socket
+import time
 
 from l3_ebpf.namespace.scope import AgentScopeManager
 from l3_ebpf.userspace.collector import CSyscallEvent, NativeL3Collector
@@ -14,10 +15,14 @@ class FakeNativeLibrary:
         self.updates = []
         self.drops = 0
         self.poll_result = 0
+        self.fail_enable = False
 
     def update_cgroup_filter(self, handle, cgroup_id, enabled):
         self.updates.append((cgroup_id, enabled))
-        return 0
+        return -1 if enabled and self.fail_enable else 0
+
+    def cleanup_bpf(self, handle):
+        return None
 
     def poll_ringbuffer(self, handle, timeout_ms):
         return self.poll_result
@@ -42,6 +47,53 @@ class CollectorBridgeTests(unittest.TestCase):
         self.assertIsNone(self.scope.resolve_cgroup(123))
         self.assertEqual(self.lib.updates, [(123, 1), (123, 0)])
 
+    def test_duplicate_cgroup_or_agent_cannot_overwrite_active_run(self):
+        self.collector.register_agent("run-1", 123, 42)
+        with self.assertRaises(ValueError):
+            self.collector.register_agent("run-2", 123, 43)
+        with self.assertRaises(ValueError):
+            self.collector.register_agent("run-1", 124, 43)
+        self.assertEqual(self.scope.resolve_cgroup(123), "run-1")
+        self.assertIsNone(self.scope.resolve_cgroup(124))
+        self.assertEqual(self.lib.updates, [(123, 1)])
+
+    def test_failed_kernel_registration_rolls_back_scope(self):
+        self.lib.fail_enable = True
+        with self.assertRaises(RuntimeError):
+            self.collector.register_agent("run-1", 123, 42)
+        self.assertIsNone(self.scope.resolve_cgroup(123))
+        self.lib.fail_enable = False
+        self.collector.register_agent("run-2", 123, 43)
+        self.assertEqual(self.scope.resolve_cgroup(123), "run-2")
+
+    def test_stale_buffered_event_cannot_cross_cgroup_reuse(self):
+        self.collector.register_agent("run-1", 123, 42)
+        stale_time = time.monotonic_ns()
+        self.collector.unregister_agent("run-1")
+        self.collector.register_agent("run-2", 123, 43)
+        observed = []
+        self.collector.register_callback(observed.append)
+        event = CSyscallEvent()
+        event.type = 1
+        event.cgroup_id = 123
+        event.pid = 42
+        event.tid = 42
+        event.executable = b"/bin/echo"
+        event.timestamp_ns = stale_time
+        self.collector._event_handler(ctypes.pointer(event), ctypes.sizeof(event))
+        self.assertEqual(observed, [])
+        self.assertEqual(self.health.events_dropped, 1)
+        event.timestamp_ns = time.monotonic_ns()
+        event.pid = 43
+        event.tid = 43
+        self.collector._event_handler(ctypes.pointer(event), ctypes.sizeof(event))
+        self.assertEqual([item.agent_id for item in observed], ["run-2"])
+
+    def test_detach_clears_scope_bindings(self):
+        self.collector.register_agent("run-1", 123, 42)
+        self.collector.stop()
+        self.assertIsNone(self.scope.resolve_cgroup(123))
+
     def test_kernel_drop_counter_is_reflected_in_health(self):
         self.lib.drops = 2
         self.collector.poll()
@@ -63,7 +115,7 @@ class CollectorBridgeTests(unittest.TestCase):
         self.collector.register_callback(observed.append)
         opened = CSyscallEvent()
         opened.type = 2
-        opened.timestamp_ns = 100
+        opened.timestamp_ns = time.monotonic_ns()
         opened.pid = 42
         opened.tid = 42
         opened.cgroup_id = 123
@@ -73,7 +125,7 @@ class CollectorBridgeTests(unittest.TestCase):
         self.collector._event_handler(ctypes.pointer(opened), ctypes.sizeof(opened))
         connected = CSyscallEvent()
         connected.type = 3
-        connected.timestamp_ns = 101
+        connected.timestamp_ns = opened.timestamp_ns + 1
         connected.pid = 42
         connected.tid = 42
         connected.cgroup_id = 123

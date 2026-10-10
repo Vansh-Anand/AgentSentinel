@@ -37,7 +37,7 @@ Orders 1, 2, and 8 can produce a strong internship portfolio release **without w
 
 ## 2. Harden the restricted execution boundary
 
-**Implementation checkpoint:** The Docker command runner now streams output through a fixed byte budget and terminates an overproducing child, then removes the named container. A real local process test proves the host output file stops at the configured limit; safe and attack fixtures still passed in Docker Desktop with a pinned Python image. Concurrent hostile-workspace swaps, broader escape evaluation and cancellation/restart stress remain open.
+**Implementation checkpoint:** The Docker command runner streams output through a fixed byte budget and terminates an overproducing child, then removes the named container. A slow child emitting one byte over the limit was stopped before its timeout. Windows post-open handle checks rejected a symlink swap before Docker started; Linux descriptor-relative reads rejected a parent swap and a hardlink to the unlisted synthetic secret. Safe and attack fixtures still passed in Docker Desktop with a pinned Python image. Concurrent hostile-workspace swaps, broader escape evaluation and cancellation/restart stress remain open.
 
 **Build:** Keep the current exact argument allowlist and pinned Docker image. Test source-file swaps during snapshot creation, symlink/hardlink tricks, replacement of paths after policy checks, process cancellation, API restart during execution, container cleanup, oversized output, time/memory limits and denied egress. Preserve the fixed synthetic repository for the default dashboard. If arbitrary workspaces are ever accepted, require a separate threat model, authentication, tenant isolation and safe source acquisition first.
 
@@ -46,6 +46,8 @@ Orders 1, 2, and 8 can produce a strong internship portfolio release **without w
 **Where:** `agent_runtime/docker_executor.py`, `agent_runtime/tools.py`, `tests/gateway/`, `SECURITY.md`.
 
 ## 3. Connect native L3 to one real agent request
+
+**Implementation checkpoint:** The collector now rejects duplicate agent IDs and occupied cgroups before touching the kernel filter. A failed filter install rolls back the scope; detach clears it. Native event timestamps older than a reused cgroup's registration are dropped instead of being assigned to a new run. Contract tests cover these cases, and the Docker Desktop Linux VM vertical slice still observed all three synthetic syscall attempts with zero measured ring-buffer drops. This prevents two specific attribution errors; it does not create a unique cgroup or complete process-tree coverage for each application request.
 
 **Environment:** First use the existing Docker Desktop Linux VM validation image for development. To claim native host coverage, acquire a supported Linux host/VM with cgroups v2, BTF/tracefs and the required BPF privileges, then run `deployments/linux-validation/preflight.sh`. A Windows browser demo alone cannot close this gate.
 

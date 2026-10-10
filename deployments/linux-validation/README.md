@@ -2,7 +2,7 @@
 
 This profile validates `execve`, `openat`, and IPv4/IPv6 `connect` entry probes on a **native Linux host**. Docker Desktop on Windows cannot prove host-wide Linux telemetry. The probes record attempts, not syscall outcomes, and are not yet connected to Gateway EffectSeal receipts.
 
-The same vertical-slice script passed in a privileged Docker Desktop Linux VM after mounting tracefs inside the disposable container. That is evidence that the probes attach and emit the three targeted events in the VM; it does not substitute for native host or application process-tree validation.
+The same vertical-slice script passed in a privileged Docker Desktop Linux VM after mounting tracefs inside the disposable container. It also rejects a duplicate registration for the active cgroup before the probe run. That is evidence that the probes attach and emit the three targeted events in the VM; it does not substitute for native host or application process-tree validation.
 
 To reproduce that VM-only check in a disposable Docker Desktop environment:
 

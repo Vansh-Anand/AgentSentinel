@@ -191,7 +191,7 @@ export function GatewayDemoPage() {
           <p><strong>{evaluation.benign_completed}/{evaluation.benign_cases}</strong><br />Benign tasks completed</p>
           {evaluation.benign_task_success != null && <p><strong>{evaluation.benign_task_success}/{evaluation.benign_cases}</strong><br />Benign answers passed the lexical task check</p>}
         </div>
-        <p className="mt-2 text-xs text-blue-900">{evaluation.audit_chains_verified} local audit chains and {evaluation.signed_receipts_verified} signed receipts verified{evaluation.final_results_bound_to_audit != null ? ` · ${evaluation.final_results_bound_to_audit} final answers bound to audits` : ''} · provider errors: {evaluation.provider_errors} · source hashes matched at publication: {evaluation.source_hashes_match_current_checkout ? 'yes' : 'no'}</p>
+        <p className="mt-2 text-xs text-blue-900">{evaluation.audit_chains_verified} local audit chains and {evaluation.signed_receipts_verified} signed receipts verified{evaluation.final_results_bound_to_audit != null ? ` · ${evaluation.final_results_bound_to_audit} final answers bound to audits` : ''} · provider errors: {evaluation.provider_errors} · source hashes matched at publication: {evaluation.source_hashes_match_current_checkout ? 'yes' : 'no'}; the current checkout may differ</p>
       </section>}
       <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         Fixture replay is deterministic, not an AI model. Gemini requires GEMINI_API_KEY and google-genai on the API host.

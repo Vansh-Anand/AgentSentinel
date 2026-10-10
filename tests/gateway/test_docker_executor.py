@@ -2,7 +2,9 @@ import subprocess
 from pathlib import Path
 import sys
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
 
 from agent_runtime.docker_executor import DockerCommandExecutor, OutputLimitExceeded, run_bounded
 from agent_runtime.gateway import AgentToolGateway, JsonlAuditSink
@@ -108,6 +110,67 @@ class DockerBoundaryTests(unittest.TestCase):
             with self.assertRaises(OutputLimitExceeded):
                 run_bounded(command, stdout=output, timeout=5, output_limit=1024)
         self.assertEqual(output_path.stat().st_size, 1024)
+
+    def test_streaming_runner_stops_small_overflow_before_child_timeout(self):
+        output_path = self.root / "slow-overflow.log"
+        command = [sys.executable, "-c",
+                   "import sys,time; sys.stdout.buffer.write(b'X'*1025); "
+                   "sys.stdout.flush(); time.sleep(5)"]
+        started = time.monotonic()
+        with output_path.open("wb") as output:
+            with self.assertRaises(OutputLimitExceeded):
+                run_bounded(command, stdout=output, timeout=4, output_limit=1024)
+        self.assertLess(time.monotonic() - started, 3)
+        self.assertEqual(output_path.stat().st_size, 1024)
+
+    def test_hardlink_to_unlisted_secret_is_rejected_before_container_start(self):
+        (self.root / "README.md").unlink()
+        try:
+            (self.root / "README.md").hardlink_to(self.root / ".env")
+        except OSError:
+            self.skipTest("hardlink creation unavailable")
+        calls = []
+
+        def fake_runner(command, **_kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0)
+
+        executor = DockerCommandExecutor(PINNED_IMAGE, process_runner=fake_runner)
+        with self.assertRaises(PermissionError):
+            executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
+        self.assertEqual(calls, [])
+
+    @unittest.skipUnless(sys.platform == "win32", "requires Windows handle path verification")
+    def test_windows_swap_to_unlisted_file_is_rejected_before_container_start(self):
+        try:
+            probe = self.root / "probe-link"
+            probe.symlink_to(self.root / ".env")
+            probe.unlink()
+        except OSError:
+            self.skipTest("symlink creation unavailable")
+        original_open = open
+        swapped = False
+
+        def swap_before_open(path, *args, **kwargs):
+            nonlocal swapped
+            if Path(path) == self.root / "README.md" and not swapped:
+                swapped = True
+                (self.root / "README.md").unlink()
+                (self.root / "README.md").symlink_to(self.root / ".env")
+            return original_open(path, *args, **kwargs)
+
+        calls = []
+
+        def fake_runner(command, **_kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0)
+
+        executor = DockerCommandExecutor(PINNED_IMAGE, process_runner=fake_runner)
+        with patch("builtins.open", side_effect=swap_before_open):
+            with self.assertRaises(PermissionError):
+                executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
+        self.assertTrue(swapped)
+        self.assertEqual(calls, [])
 
     def test_output_limit_removes_named_container(self):
         cleaned = []

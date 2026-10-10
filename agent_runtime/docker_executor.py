@@ -26,7 +26,7 @@ def run_bounded(command, *, stdout, timeout: int, output_limit: int,
     """Drain a child pipe without allowing unbounded host output or memory."""
     process = subprocess.Popen(
         command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.STDOUT, bufsize=0,
     )
     exceeded = threading.Event()
     read_errors: list[BaseException] = []

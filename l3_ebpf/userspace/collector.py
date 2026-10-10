@@ -5,6 +5,7 @@ import json
 import ctypes
 import ipaddress
 import socket
+import threading
 from typing import List, Callable
 from common.events.schemas import SyscallEvent
 from l3_ebpf.namespace.scope import AgentScopeManager
@@ -96,6 +97,7 @@ class NativeL3Collector:
         self._handle = None
         self._callback_ref = None # Keep reference to prevent GC
         self._last_kernel_drops = 0
+        self._registration_lock = threading.RLock()
 
     def register_callback(self, cb: Callable[[SyscallEvent], None]):
         self.callbacks.append(cb)
@@ -109,14 +111,11 @@ class NativeL3Collector:
             ce = event_ptr.contents
             
             # Verify namespace scoping
-            if ce.cgroup_id and not self.scope_manager.is_monitored(ce.cgroup_id):
+            identity = self.scope_manager.resolve_native_event(ce.cgroup_id, ce.timestamp_ns)
+            if identity is None:
                 self.health_monitor.record_drop()
                 return
-            agent_id = self.scope_manager.resolve_cgroup(ce.cgroup_id)
-            if not agent_id:
-                self.health_monitor.record_drop()
-                return
-            identity = self.scope_manager.get_agent(agent_id)
+            agent_id = identity.agent_id
             syscall_name = {1: "execve", 2: "openat", 3: "connect"}.get(ce.type)
             if syscall_name is None:
                 self.health_monitor.record_decode_error()
@@ -238,24 +237,26 @@ class NativeL3Collector:
 
     def register_agent(self, agent_id: str, cgroup_id: int, root_pid: int,
                        container_id: str | None = None):
-        if not self._handle or not self._lib:
-            raise RuntimeError("native collector is not attached")
-        if cgroup_id <= 0 or self._lib.update_cgroup_filter(self._handle, cgroup_id, 1) != 0:
-            raise RuntimeError("failed to install cgroup filter")
-        try:
-            return self.scope_manager.register_agent(agent_id, cgroup_id, root_pid, container_id)
-        except Exception:
-            self._lib.update_cgroup_filter(self._handle, cgroup_id, 0)
-            raise
+        with self._registration_lock:
+            if not self._handle or not self._lib:
+                raise RuntimeError("native collector is not attached")
+            identity = self.scope_manager.register_agent(agent_id, cgroup_id, root_pid, container_id)
+            if self._lib.update_cgroup_filter(self._handle, cgroup_id, 1) != 0:
+                self.scope_manager.unregister_agent(agent_id)
+                raise RuntimeError("failed to install cgroup filter")
+            return identity
 
     def unregister_agent(self, agent_id: str):
-        identity = self.scope_manager.get_agent(agent_id)
-        if identity and self._handle and self._lib:
-            if self._lib.update_cgroup_filter(self._handle, identity.cgroup_id, 0) != 0:
-                raise RuntimeError("failed to remove cgroup filter")
-            self.scope_manager.unregister_agent(agent_id)
+        with self._registration_lock:
+            identity = self.scope_manager.get_agent(agent_id)
+            if identity and self._handle and self._lib:
+                if self._lib.update_cgroup_filter(self._handle, identity.cgroup_id, 0) != 0:
+                    raise RuntimeError("failed to remove cgroup filter")
+                self.scope_manager.unregister_agent(agent_id)
             
     def stop(self):
-        if self._handle and self._lib:
-            self._lib.cleanup_bpf(self._handle)
-            self._handle = None
+        with self._registration_lock:
+            if self._handle and self._lib:
+                self._lib.cleanup_bpf(self._handle)
+                self._handle = None
+            self.scope_manager.clear()

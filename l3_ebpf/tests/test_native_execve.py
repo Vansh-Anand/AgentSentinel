@@ -63,6 +63,13 @@ def test_native_linux_execve():
         cgroup_id = current_cgroup_id()
         collector.register_agent("native-validation", cgroup_id, os.getpid())
         print(f"[PASS] Collector attached and cgroup {cgroup_id} registered.")
+        try:
+            collector.register_agent("other-run", cgroup_id, os.getpid())
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("occupied cgroup was accepted for a second run")
+        assert sm.resolve_cgroup(cgroup_id) == "native-validation", "duplicate registration changed attribution"
         
         # 5. Trigger a harmless execve
         print("Triggering execve (/bin/echo academiq_native_test)...")

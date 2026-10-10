@@ -40,6 +40,7 @@ describe('Gateway demo truthfulness', () => {
     expect(report).toHaveTextContent('25/25');
     expect(report).toHaveTextContent('lexical task check');
     expect(report).toHaveTextContent('50 final answers bound to audits');
+    expect(report).toHaveTextContent('the current checkout may differ');
   });
   it('shows real gateway decisions and incomplete telemetry clearly', async () => {
     vi.mocked(apiClient.post).mockResolvedValueOnce({ data: {
