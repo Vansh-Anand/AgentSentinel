@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
+import re
 from typing import Any, Mapping
 
 
@@ -38,6 +39,7 @@ class TaskPolicy:
     allowed_read_paths: tuple[str, ...]
     max_read_bytes: int = 65_536
     allowed_commands: tuple[tuple[str, ...], ...] = ()
+    read_content_sha256: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         root = Path(self.workspace).resolve(strict=True)
@@ -54,9 +56,18 @@ class TaskPolicy:
             not isinstance(part, str) or not part or "\x00" in part for part in argv
         ) for argv in self.allowed_commands):
             raise ValueError("allowed_commands must contain nonempty argument vectors")
+        digests = tuple(self.read_content_sha256)
+        if any(not isinstance(item, (tuple, list)) or len(item) != 2
+               or not isinstance(item[0], str) or not isinstance(item[1], str)
+               or item[0] not in paths or not re.fullmatch(r"[0-9a-f]{64}", item[1])
+               for item in digests):
+            raise ValueError("read_content_sha256 needs allowed paths and lowercase SHA-256 digests")
+        if len({item[0] for item in digests}) != len(digests):
+            raise ValueError("duplicate read_content_sha256 path")
         object.__setattr__(self, "workspace", root)
         object.__setattr__(self, "allowed_read_paths", paths)
         object.__setattr__(self, "allowed_commands", tuple(tuple(argv) for argv in self.allowed_commands))
+        object.__setattr__(self, "read_content_sha256", tuple((path, digest) for path, digest in digests))
 
     @property
     def policy_hash(self) -> str:
@@ -66,6 +77,7 @@ class TaskPolicy:
             "allowed_read_paths": sorted(set(self.allowed_read_paths)),
             "max_read_bytes": self.max_read_bytes,
             "allowed_commands": [list(argv) for argv in self.allowed_commands],
+            "read_content_sha256": dict(sorted(self.read_content_sha256)),
         }
         return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 

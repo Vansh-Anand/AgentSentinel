@@ -1,7 +1,10 @@
 import subprocess
+import hashlib
+import os
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -19,11 +22,15 @@ class DockerBoundaryTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        (self.root / "README.md").write_text("safe", encoding="utf-8")
-        (self.root / "summary.py").write_text("print('summary')\n", encoding="utf-8")
-        (self.root / ".env").write_text("DEMO_SECRET=synthetic", encoding="utf-8")
+        (self.root / "README.md").write_bytes(b"safe")
+        (self.root / "summary.py").write_bytes(b"print('summary')\n")
+        (self.root / ".env").write_bytes(b"DEMO_SECRET=synthetic")
         self.policy = TaskPolicy(self.root, ("README.md", "summary.py"),
-                                 allowed_commands=(("python", "summary.py"),))
+                                 allowed_commands=(("python", "summary.py"),),
+                                 read_content_sha256=(
+                                     ("README.md", hashlib.sha256(b"safe").hexdigest()),
+                                     ("summary.py", hashlib.sha256(b"print('summary')\n").hexdigest()),
+                                 ))
 
     def test_docker_invocation_has_restricted_flags_and_only_allowlisted_snapshot(self):
         captured = []
@@ -139,6 +146,75 @@ class DockerBoundaryTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
         self.assertEqual(calls, [])
+
+    def test_regular_file_swap_to_secret_is_rejected_before_container_start(self):
+        # A normal file replacement is not caught by no-follow checks alone.
+        (self.root / "README.md").write_bytes((self.root / ".env").read_bytes())
+        calls = []
+
+        def fake_runner(command, **_kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0)
+
+        executor = DockerCommandExecutor(PINNED_IMAGE, process_runner=fake_runner)
+        with self.assertRaisesRegex(PermissionError, "content changed"):
+            executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
+        self.assertEqual(calls, [])
+
+    def test_docker_rejects_policy_without_complete_content_manifest(self):
+        policy = TaskPolicy(self.root, ("README.md", "summary.py"),
+                            allowed_commands=(("python", "summary.py"),))
+        executor = DockerCommandExecutor(PINNED_IMAGE,
+            process_runner=lambda *_args, **_kwargs: self.fail("Docker must not start"))
+        with self.assertRaisesRegex(PermissionError, "digest for every"):
+            executor.execute("execute_command", {"argv": ["python", "summary.py"]}, policy)
+
+    def test_concurrent_regular_file_replacement_never_enters_snapshot(self):
+        started = threading.Event()
+        stop = threading.Event()
+        swaps = []
+        permitted_snapshots = []
+
+        def replace_readme():
+            started.set()
+            for index in range(400):
+                if stop.is_set():
+                    break
+                candidate = self.root / f"incoming-{index}.tmp"
+                candidate.write_bytes(b"DEMO_SECRET=synthetic" if index % 2 else b"safe")
+                try:
+                    os.replace(candidate, self.root / "README.md")
+                    swaps.append(index)
+                    time.sleep(0.001)
+                except OSError:
+                    candidate.unlink(missing_ok=True)
+
+        def fake_runner(command, **kwargs):
+            mount = command[command.index("--mount") + 1]
+            source = Path(mount.split("source=", 1)[1].split(",target=", 1)[0])
+            data = (source / "README.md").read_bytes()
+            permitted_snapshots.append(data)
+            self.assertEqual(data, b"safe")
+            kwargs["stdout"].write(b"ok\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        worker = threading.Thread(target=replace_readme)
+        worker.start()
+        self.assertTrue(started.wait(2))
+        executor = DockerCommandExecutor(PINNED_IMAGE, process_runner=fake_runner)
+        try:
+            for _ in range(100):
+                try:
+                    executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
+                except PermissionError:
+                    pass
+        finally:
+            stop.set()
+            worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        self.assertTrue(swaps)
+        self.assertTrue(permitted_snapshots)
+        self.assertNotIn(b"DEMO_SECRET=synthetic", permitted_snapshots)
 
     @unittest.skipUnless(sys.platform == "win32", "requires Windows handle path verification")
     def test_windows_swap_to_unlisted_file_is_rejected_before_container_start(self):

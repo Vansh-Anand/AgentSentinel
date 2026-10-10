@@ -1,55 +1,50 @@
-# AcademIQ Architecture (Final)
+# AgentSentinel architecture and trust boundaries
 
-AcademIQ enforces Zero-Trust security across 7 distinct layers:
+Updated 2026-10-11. This diagram describes the running Gateway application. The
+[completion matrix](PROJECT_COMPLETION_MATRIX.md) tracks the acceptance gate for
+each of the seven proposed layers.
 
 ```mermaid
-graph TD
-    Agent[AI Agent / LLM]
-    L1[L1: Grammar-Constrained Decoding]
-    L2[L2: Semantic Defense Network]
-    L3[L3: eBPF Telemetry]
-    L4[L4: Divergence Engine]
-    L5[L5: RiskChain Governance]
-    L6[L6: ECES Causal Log]
-    L7[L7: Hardware TEE / Attestation]
-
-    Agent --> L1
-    L1 --> L2
-    L2 --> L3
-    L3 --> L4
-    L4 --> L5
-    L5 --> L6
-    L6 --> L7
+flowchart LR
+    U[User task] --> A[Bounded agent loop]
+    R[Untrusted synthetic README] --> A
+    A --> P[L1 typed proposal parser]
+    P --> G[L2 server-owned task gateway]
+    G -->|deny: no tool call| E[L6 audit and signed receipt]
+    G -->|allow| X[Approved local read or optional Docker fixture]
+    X --> O[EffectSeal reconciliation]
+    O --> K[L4 rule signal and L5 risk action]
+    K --> A
+    K --> E
+    S[L7 software source and policy hashes] --> E
+    N[L3 Linux cgroup eBPF probe] -. VM validation only .-> O
+    T[Hardware quote] -. unavailable .-> E
 ```
 
-## Layer Definitions
-- **L1**: Syntactic Grammar Constrained Decoding (Softmax Masking).
-- **L2**: Shell Deobfuscation Normalizer + TOCTOU Resilience.
-- **L3**: eBPF Kernel Call Tracing (Host-level).
-- **L4**: Behavioral Divergence (Siamese / Isolation Forest).
-- **L5**: Bayesian Risk + Fuzzy Governance (Freeze/Throttle).
-- **L6**: ECES (Evidentiary Security) Cryptographic Hash Chains.
-- **L7**: Hardware Anchored Trust (TDX/SEV-SNP/TPM + Nonce Attestation).
+The task policy and audit keys are owned by the API process. README text and
+tool feedback are lower-trust input to the model. The model can propose tool
+calls, but the gateway decides whether an exact path or command is authorized
+and records its decision before an allowed executor call. The default Compose
+app uses a disposable synthetic repository and has no Docker socket.
 
-## L1: Grammar-Constrained Decoding (GCD)
-**Goal:** Prevent dangerous LLM output structurally during text generation.
-**Components:**
-1. **Context-Free Grammar (CFG)**: Defines the absolute syntactic limits of tool usage.
-2. **Pushdown Automaton (PDA)**: Validates each token prefix against the CFG.
-3. **Logit Masking**: Masking illegal tokens to `-∞` prior to softmax.
+The optional command fixture uses a pinned Linux image, a read-only root, no
+network, reduced privileges and resource limits. The snapshot contains only
+allowed files whose bytes match server-pinned SHA-256 digests. This prevents
+changed file content from entering that fixture after the policy is built.
+The fixture is a bounded demonstration, with no comprehensive container escape
+assessment or arbitrary hostile-workspace support.
 
-## L2: Semantic Defense Network (SDN)
-**Goal:** Prevent shell obfuscation and TOCTOU bypasses before execution.
-**Components:**
-1. **Shell Interceptor**: eBPF uprobe / LD_PRELOAD interceptor before `execve`.
-2. **Parser**: Generates a secure, side-effect-free AST using `bashlex`.
-3. **5-Pass Normalizer**: Handles variable expansion, decodes (Base64/Hex/Octal), applies ANSI-C quoting rules, resolves aliases, and strictly canonicalizes paths.
-4. **Policy Matcher**: Checks canonical AST against `shell.yaml`.
-5. **TOCTOU Resolver & Verifier**: Caches and verifies `inode` identities on Linux (simulated via Windows abstractions in dev).
-6. **Execution Gate**: Only permits execution if L1 allowed and L2 explicitly permitted execution.
+After each tool result, EffectSeal records whether a trusted observation can
+support the allowed effects. The local Gateway has no native observer attached,
+so an allowed action is `INCOMPLETE`; a denied proposal is `NOT_EXECUTED`.
+The live L4 signal is deterministic gateway-derived rules. L5 can stop later
+proposals on a denial or trusted observed violation. A separate research model
+is inactive.
 
-## L3: Host-Only Telemetry (eBPF)
-(Planned for Phase 4) - Synthesizes system call telemetry.
-
-## Orchestrator
-Coordinates the interaction between layers, event schemas, and enforcing the security gate.
+L6 chains audit records with a local HMAC and signs a final run receipt with
+Ed25519. A separately pinned public key verifies an exported receipt and audit
+digest offline. Independent key custody and an external timestamp or digest
+anchor remain open. L7 records local software hashes; it does not attest
+loaded code or a TPM/TEE. The Linux eBPF collector has been attached and tested
+in a Docker Desktop VM with a controlled request cgroup, but is not connected
+to the current browser request lifecycle.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
@@ -117,6 +118,9 @@ class DockerCommandExecutor:
         argv = arguments["argv"]
         if tuple(argv) not in policy.allowed_commands:
             raise PermissionError("command is not in task policy")
+        expected_hashes = dict(policy.read_content_sha256)
+        if set(expected_hashes) != set(policy.allowed_read_paths):
+            raise PermissionError("Docker snapshot requires a digest for every allowed file")
         with tempfile.TemporaryDirectory(prefix="agentsentinel-container-") as directory:
             base = Path(directory)
             input_dir = base / "input"
@@ -127,7 +131,11 @@ class DockerCommandExecutor:
                 # repository and its .env are never mounted wholesale.
                 target = input_dir.joinpath(*relative.split("/"))
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(local_reader.execute("read_file", {"path": relative}, policy), encoding="utf-8")
+                content = local_reader.execute("read_file", {"path": relative}, policy)
+                encoded = content.encode("utf-8")
+                if hashlib.sha256(encoded).hexdigest() != expected_hashes[relative]:
+                    raise PermissionError("approved file content changed before snapshot")
+                target.write_bytes(encoded)
             output_path = base / "output.log"
             name = f"agentsentinel-{uuid.uuid4().hex}"
             command = [

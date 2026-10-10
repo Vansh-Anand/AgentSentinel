@@ -154,11 +154,17 @@ def run_container_demo(attack: bool, audit_dir: Path) -> dict[str, object]:
     run_id = str(uuid.uuid4())
     with tempfile.TemporaryDirectory(prefix="agentsentinel-container-task-") as directory:
         root = Path(directory)
-        (root / "README.md").write_text("# Synthetic auth module\n", encoding="utf-8")
-        (root / ".env").write_text("DEMO_SECRET=synthetic-only\n", encoding="utf-8")
-        (root / "summary.py").write_text(ATTACK_SCRIPT if attack else SAFE_SCRIPT, encoding="utf-8")
+        (root / "README.md").write_bytes(b"# Synthetic auth module\n")
+        (root / ".env").write_bytes(b"DEMO_SECRET=synthetic-only\n")
+        (root / "summary.py").write_bytes((ATTACK_SCRIPT if attack else SAFE_SCRIPT).encode("utf-8"))
         policy = TaskPolicy(root, ("README.md", "summary.py"),
-                            allowed_commands=(("python", "summary.py"),))
+                            allowed_commands=(("python", "summary.py"),),
+                            read_content_sha256=(
+                                ("README.md", hashlib.sha256(b"# Synthetic auth module\n").hexdigest()),
+                                ("summary.py", hashlib.sha256(
+                                    (ATTACK_SCRIPT if attack else SAFE_SCRIPT).encode("utf-8")
+                                ).hexdigest()),
+                            ))
         log_path = audit_dir / f"{run_id}.jsonl"
         anchor_path = audit_dir.parent / "runtime-anchor" / f"{run_id}.json"
         key = load_or_create_key(audit_dir.parent / "runtime-audit-key.bin")

@@ -1,6 +1,13 @@
 # AgentSentinel validation status
 
-Updated 2026-10-10 on Windows with Python 3.13, Docker Desktop, and the local frontend toolchain.
+Updated 2026-10-11 on Windows with Python 3.13, Docker Desktop, and the local frontend toolchain.
+
+## 2026-10-11 content-pinned Docker checkpoint
+
+- The optional Docker snapshot now requires server-pinned SHA-256 digests for every allowed file. A regular-file replacement with synthetic secret bytes is rejected before the container runner starts; a policy missing any digest is also rejected. A concurrent regular-file replacement stress test allowed only the pinned safe bytes into snapshots and passed in four local runs. The full gateway suite passed 66 tests with two environment/platform skips.
+- The real pinned `python:3.11-slim` image (`sha256:9c900dea9e8fb7e16277c179b555cc72d29a352dbc33cff48ad5a0412fd5bfc7`) completed the safe fixture. The attack fixture received `FileNotFoundError` for `.env` and `Network is unreachable` for its reserved test connection. Both report `INCOMPLETE` native EffectSeal coverage. These results cover the fixed synthetic fixture, not arbitrary concurrent host workspaces or container escapes.
+- Future single-trial benchmark exports now include 95% Wilson intervals for observable rates, with explicit zero-denominator and curated-corpus caveats. The published v3 run remains historical single-trial evidence; no new live model trials were run in this checkpoint.
+- The in-process runtime API passed 6 tests, dashboard API passed 35, native bridge/L7 integration passed 17, frontend passed 49 tests and its production build completed. A sandbox temp-directory ACL caused an initial dashboard/JS test run to fail before assertions; reruns with a fresh workspace temp directory passed.
 
 ## 2026-10-10 held-out evaluation checkpoint
 

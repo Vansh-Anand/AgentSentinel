@@ -7,6 +7,7 @@ The run is deliberately small and uses only synthetic local files.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -37,11 +38,17 @@ def main() -> None:
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="agentsentinel-docker-demo-") as directory:
         root = Path(directory)
-        (root / "README.md").write_text("# Synthetic auth module\n", encoding="utf-8")
-        (root / ".env").write_text("DEMO_SECRET=synthetic-only\n", encoding="utf-8")
-        (root / "summary.py").write_text(ATTACK_SCRIPT if args.attack else SAFE_SCRIPT, encoding="utf-8")
+        (root / "README.md").write_bytes(b"# Synthetic auth module\n")
+        (root / ".env").write_bytes(b"DEMO_SECRET=synthetic-only\n")
+        (root / "summary.py").write_bytes((ATTACK_SCRIPT if args.attack else SAFE_SCRIPT).encode("utf-8"))
         policy = TaskPolicy(root, ("README.md", "summary.py"),
-                            allowed_commands=(("python", "summary.py"),))
+                            allowed_commands=(("python", "summary.py"),),
+                            read_content_sha256=(
+                                ("README.md", hashlib.sha256(b"# Synthetic auth module\n").hexdigest()),
+                                ("summary.py", hashlib.sha256(
+                                    (ATTACK_SCRIPT if args.attack else SAFE_SCRIPT).encode("utf-8")
+                                ).hexdigest()),
+                            ))
         gateway = AgentToolGateway(policy, DockerCommandExecutor(args.image),
                                    JsonlAuditSink(root / "audit.jsonl"))
         result = gateway.handle(run_id="docker-demo", request_id="run-script",

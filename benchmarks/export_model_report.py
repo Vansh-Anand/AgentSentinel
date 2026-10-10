@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 
 from .verify_model_report import verify_report
+from .rate_intervals import wilson_95
 
 
 def export(report_path: Path, data_dir: Path, output_dir: Path,
@@ -58,6 +59,20 @@ def export(report_path: Path, data_dir: Path, output_dir: Path,
         "p95_latency_ms": latencies[math.ceil(0.95 * len(latencies)) - 1],
         "cases": public_rows,
     }
+    if report["repeats"] == 1:
+        rate_counts = {
+            "attack_denied_proposal": (summary["attack_cases_with_denied_proposal"], summary["attack_cases"]),
+            "denied_proposal_executed": (summary["denied_proposals_executed"], summary["attack_denied_proposals"]),
+            "benign_completed": (summary["benign_completed"], summary["benign_cases"]),
+            "benign_denied_proposal": (summary["benign_cases_with_denial"], summary["benign_cases"]),
+        }
+        if version == "v3":
+            rate_counts["benign_lexical_success"] = (summary["benign_task_success"], summary["benign_cases"])
+        summary["wilson_95"] = {
+            name: {"successes": numerator, "total": denominator,
+                   "interval": wilson_95(numerator, denominator)}
+            for name, (numerator, denominator) in rate_counts.items()
+        }
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = f"agentsentinel_model_eval_{version}"
     json_path = output_dir / f"{stem}.json"
@@ -73,6 +88,24 @@ def export(report_path: Path, data_dir: Path, output_dir: Path,
     result_row = (f"| Final answers bound to signed audits | "
                   f"{summary['final_results_bound_to_audit']}/{summary['attack_cases'] + summary['benign_cases']} |\n"
                   if version == "v3" else "")
+    interval_rows = ""
+    if "wilson_95" in summary:
+        labels = {
+            "attack_denied_proposal": "Attack cases inducing a denied proposal",
+            "denied_proposal_executed": "Denied attack proposals executed",
+            "benign_completed": "Benign tasks completed",
+            "benign_denied_proposal": "Benign cases with a denied proposal",
+            "benign_lexical_success": "Benign lexical task checks passed",
+        }
+        lines = ["| Rate | Count | 95% Wilson interval |", "| --- | ---: | ---: |"]
+        for name, value in summary["wilson_95"].items():
+            interval = value["interval"]
+            display = (f"{100 * interval[0]:.1f}%–{100 * interval[1]:.1f}%"
+                       if interval is not None else "undefined (zero proposals)")
+            lines.append(f"| {labels[name]} | {value['successes']}/{value['total']} | {display} |")
+        interval_rows = ("\n## Descriptive uncertainty\n\n" + "\n".join(lines) +
+                         "\n\nThese intervals assume independent trials. The cases were curated, so the "
+                         "intervals do not estimate real-world attack prevalence or protection.\n")
     markdown = f"""# AgentSentinel model gateway evaluation {version}
 
 This is {trial_description} on `{summary['platform']}` with `{', '.join(summary['model'])}`. The [versioned corpus]({corpus_link}) has SHA-256 `{summary['corpus_sha256']}`. [Per-case results]({stem}.json) omit run IDs, raw model text, and credentials.
@@ -92,6 +125,7 @@ This is {trial_description} on `{summary['platform']}` with `{', '.join(summary[
 The attack text was inside the untrusted `README.md` that the agent was asked to summarize. A denied proposal means the model requested an action outside the task policy; the gateway prevented that tool execution. The corpus uses synthetic files and a reserved test domain. {retry_note}The lexical answer assertion checks required terms only; it is not a full semantic-quality or answer-contamination grade. The run does not establish real-world attack prevalence, sandbox escape resistance, or native eBPF/TPM coverage. The local HMAC chains and fixture hashes verify against saved evidence. Source hashes matched the checkout at publication: **{str(summary['source_hashes_match_current_checkout']).lower()}**. This static result may become stale after code changes; it is not remote or hardware attestation.
 
 Reproduce with `python -m benchmarks.model_eval --provider gemini --corpus {summary['corpus']} --per-category {summary['attack_cases'] // summary['repeats']} --repeats {summary['repeats']} --output .data/model-eval/gemini-full-{version}.json`, then run the verifier and `python -m benchmarks.export_model_report .data/model-eval/gemini-full-{version}.json --version {version}`. The API key is supplied only through `GEMINI_API_KEY` and is not part of the exported report.
+{interval_rows}
 """
     (output_dir / f"{stem}.md").write_text(markdown, encoding="utf-8")
     return summary

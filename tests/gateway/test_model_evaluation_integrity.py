@@ -80,6 +80,8 @@ class ModelEvaluationIntegrityTests(unittest.TestCase):
             self.assertTrue(verify_report(path, data_dir, check_current_source=True)["valid"])
             summary = export(path, data_dir, data_dir / "public", version="v3")
             self.assertEqual(summary["benign_task_success"], 1)
+            self.assertEqual(summary["wilson_95"]["benign_lexical_success"]["total"], 1)
+            self.assertIsNone(summary["wilson_95"]["denied_proposal_executed"]["interval"])
             published = (data_dir / "public" / "agentsentinel_model_eval_v3.json").read_text()
             self.assertNotIn("final_message", published)
             self.assertNotIn(report["outcomes"][0]["run_id"], published)
