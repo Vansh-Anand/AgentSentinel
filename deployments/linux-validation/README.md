@@ -2,7 +2,7 @@
 
 This profile validates `execve`, `openat`, and IPv4/IPv6 `connect` entry probes on a **native Linux host**. Docker Desktop on Windows cannot prove host-wide Linux telemetry. The probes record attempts, not syscall outcomes, and are not yet connected to Gateway EffectSeal receipts.
 
-The same vertical-slice script passed in a privileged Docker Desktop Linux VM after mounting tracefs inside the disposable container. It also rejects a duplicate registration for the active cgroup before the probe run. That is evidence that the probes attach and emit the three targeted events in the VM; it does not substitute for native host or application process-tree validation.
+The same vertical-slice script passed in a privileged Docker Desktop Linux VM after mounting tracefs inside the disposable container. It rejects a duplicate registration for the active cgroup, then creates a unique cgroup for one controlled synthetic command and excludes a concurrent sibling cgroup. The BPF process IDs use the host PID namespace, so this test checks cgroup attribution and controlled descendant execution rather than claiming cross-namespace process-tree identity. This does not substitute for native host or live application request validation.
 
 To reproduce that VM-only check in a disposable Docker Desktop environment:
 
@@ -17,7 +17,7 @@ docker run --rm --privileged --entrypoint /bin/bash agentsentinel-l3-build \
 ## Requirements
 - Ubuntu 22.04+ or compatible Linux (Kernel >= 5.15, ideally 6.x).
 - Root privileges (`CAP_SYS_ADMIN` and `CAP_BPF`).
-- Mounted tracefs at `/sys/kernel/tracing` and cgroups v2. bpffs is optional for the current unpinned maps.
+- Mounted tracefs at `/sys/kernel/tracing` and a writable cgroups v2 subtree for the controlled request test. bpffs is optional for the current unpinned maps.
 - `clang`, `llvm`, and `libbpf` headers.
 
 ## Deployment Steps
@@ -64,7 +64,7 @@ source .data/venv/bin/activate
 ./deployments/linux-validation/run-benchmarks.sh
 ```
 
-The script fails unless the current cgroup is registered in the BPF filter and correlated `/bin/echo` `execve`, synthetic-file `openat`, and loopback `connect` attempts arrive with zero measured ring-buffer drops. It does **not** complete L3: unique request/process-tree correlation, syscall outcomes, path resolution, and live EffectSeal integration remain separate gates.
+The script fails unless the current cgroup is registered in the BPF filter and correlated `/bin/echo` `execve`, synthetic-file `openat`, and loopback `connect` attempts arrive with zero measured ring-buffer drops. It also requires a controlled request cgroup to capture those attempts while a simultaneous unregistered sibling remains excluded. It does **not** complete L3: live application request cgroups, cross-namespace process-tree correlation, syscall outcomes, path resolution, and EffectSeal integration remain separate gates.
 
 ### Note on Windows Hosts
 Running this directly under Windows is unsupported. WSL2 or a Linux container is not a substitute for validating host-wide native Linux coverage.
