@@ -74,6 +74,8 @@ You can verify a saved run without the API: `python -m agent_runtime.verify <run
 
 The Gateway result also offers **Download public evidence ZIP**. It contains only the signed receipt, audit JSONL, and public key. To export a run from the CLI instead, use `python -m agent_runtime.export_evidence <run-id> <new-output-directory>`. On another machine, extract the ZIP and run `python -m agent_runtime.verify_public <run-id> --data-dir <extracted-directory> --public-key-file <independently-pinned-public-key-file>`. Pin the key separately before trusting the bundle: a public key supplied inside the same ZIP only proves that its files agree with each other. Neither export includes the HMAC or Ed25519 private key.
 
+An [optional witness CLI](docs/witness-anchor.md) can sign a receipt digest with a separate Ed25519 key and append it to a sequence-linked ledger after the evidence bundle is exported. Its local protocol tests pass; it has not been deployed on an independent host, so the browser continues to report local L6 evidence only.
+
 ### Restricted command demo
 
 On a host with a running Linux Docker daemon, prepare a local Python image and find its image ID (`docker image inspect --format '{{.Id}}' IMAGE_NAME`). Set `AGENTSENTINEL_DOCKER_IMAGE` to that immutable image ID in the API process environment, restart the API, and use the **Run safe script** and **Run attack fixture** buttons on the Gateway page. The stand-alone CLI is also available:

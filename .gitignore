@@ -1,4 +1,5 @@
 .data/
+*.ed25519
 __pycache__/
 *.pyc
 .pytest_cache/

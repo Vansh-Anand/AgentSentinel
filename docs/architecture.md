@@ -43,8 +43,9 @@ is inactive.
 
 L6 chains audit records with a local HMAC and signs a final run receipt with
 Ed25519. A separately pinned public key verifies an exported receipt and audit
-digest offline. Independent key custody and an external timestamp or digest
-anchor remain open. L7 records local software hashes; it does not attest
+digest offline. An optional [witness CLI](witness-anchor.md) can sign that
+export under a separate key and append it to a sequence-linked ledger; no
+independent witness is deployed in the running app. L7 records local software hashes; it does not attest
 loaded code or a TPM/TEE. The Linux eBPF collector has been attached and tested
 in a Docker Desktop VM with a controlled request cgroup, but is not connected
 to the current browser request lifecycle.

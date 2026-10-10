@@ -75,6 +75,8 @@ Orders 1, 2, and 8 can produce a strong internship portfolio release **without w
 
 ## 6. Add independent L6 anchoring and key custody
 
+**Implementation checkpoint:** A separate-key witness CLI now verifies an exported run with a pinned API key, signs the receipt/audit digests with its own Ed25519 key, and appends a sequence-linked record to SQLite. Offline verification rejects wrong keys, changed proofs and a deleted prior ledger entry. The CLI was exercised locally with a fixture export. It is not deployed to an independently controlled host, and the browser still reports local L6 evidence only.
+
 **Build:** Continue local HMAC chaining and Ed25519 signing. Publish each final receipt digest to an independently controlled append-only/timestamped store; include the anchor reference and verification proof in the export. Keep signing keys outside the application data volume, support rotation and revocation, and require a separately pinned public key. Minimize/redact captured content before hashing or export.
 
 **Gate:** an offline verifier checks the signature, complete audit digest, pinned key and external anchor without trusting the API host or a key bundled in the ZIP. Tests reject replaced keys, edited/deleted/reordered records, a forged timestamp/anchor, key rotation mismatch and loss of local state. Document what happens when the anchor service is unreachable; never report independent anchoring as successful in that state.
