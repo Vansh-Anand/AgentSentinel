@@ -229,7 +229,9 @@ class DockerBoundaryTests(unittest.TestCase):
 
         def swap_before_open(path, *args, **kwargs):
             nonlocal swapped
-            if Path(path) == self.root / "README.md" and not swapped:
+            # Python 3.11 and 3.13 can pass differently normalized Windows
+            # paths here. Match the opened fixture name, then verify the swap.
+            if Path(path).name == "README.md" and not swapped:
                 swapped = True
                 (self.root / "README.md").unlink()
                 (self.root / "README.md").symlink_to(self.root / ".env")
