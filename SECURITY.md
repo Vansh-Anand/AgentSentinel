@@ -11,11 +11,11 @@ AgentSentinel is a research and portfolio application. Its default task runs aga
 ## Known limits
 
 - On Windows, local host file reads are intended only for the app-created disposable workspace. POSIX hosts use descriptor-relative no-follow traversal; a hostile concurrently mutable Windows workspace is not a supported source.
-- Container snapshot and cancellation hardening has focused tests, but no comprehensive escape or race evaluation. Do not use the fixture as a production sandbox.
+- Container snapshot and cancellation hardening has focused tests, and host-captured output now has a streaming byte limit. There is no comprehensive escape or hostile-workspace race evaluation. Do not use the fixture as a production sandbox.
 - L3 `execve`, `openat`, and `connect` attempt probes attached and produced correlated events inside Docker Desktop's Linux VM. This does not prove native host-wide coverage or request-specific process-tree correlation. No request-level EffectSeal correlation is live in the application; allowed local actions report `INCOMPLETE`.
 - L4 in the live Gateway is a deterministic rule signal. No trained anomaly model is claimed.
 - L7 local software hashes do not establish loaded-code integrity or TPM/TEE attestation. A simulated quote cannot pass hardware verification.
 - A locally held signing key and anchor can both be changed by an attacker who controls the API host. External anchoring and independent key custody are not implemented.
-- The 50-case model result is one trial per case from an earlier source revision. It does not establish general prompt-injection immunity.
+- The published v2 and v3 50-case model results are single trials on different synthetic corpora. The v2 source revision is historical; v3 source hashes matched at publication. Neither establishes general prompt-injection immunity. The v3 benign answer check matches required terms only and is not a semantic quality grade.
 
 To report a security issue, open a private GitHub security advisory for this repository if available, or contact the maintainer privately. Avoid putting real secrets in public issues or demo inputs.

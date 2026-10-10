@@ -1,9 +1,10 @@
 import subprocess
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
-from agent_runtime.docker_executor import DockerCommandExecutor
+from agent_runtime.docker_executor import DockerCommandExecutor, OutputLimitExceeded, run_bounded
 from agent_runtime.gateway import AgentToolGateway, JsonlAuditSink
 from agent_runtime.policy import TaskPolicy
 
@@ -99,6 +100,31 @@ class DockerBoundaryTests(unittest.TestCase):
         with self.assertRaises(KeyboardInterrupt):
             executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
         self.assertEqual(len(cleaned), 1)
+
+    def test_streaming_runner_stops_oversized_host_output(self):
+        output_path = self.root / "bounded-output.log"
+        command = [sys.executable, "-c", "import sys; sys.stdout.write('X' * 500000)"]
+        with output_path.open("wb") as output:
+            with self.assertRaises(OutputLimitExceeded):
+                run_bounded(command, stdout=output, timeout=5, output_limit=1024)
+        self.assertEqual(output_path.stat().st_size, 1024)
+
+    def test_output_limit_removes_named_container(self):
+        cleaned = []
+
+        def oversized(_command, **_kwargs):
+            raise OutputLimitExceeded("container output exceeded task limit")
+
+        def cleanup(command, **_kwargs):
+            cleaned.append(command)
+            return subprocess.CompletedProcess(command, 0)
+
+        executor = DockerCommandExecutor(PINNED_IMAGE, process_runner=oversized,
+                                         cleanup_runner=cleanup)
+        with self.assertRaises(OutputLimitExceeded):
+            executor.execute("execute_command", {"argv": ["python", "summary.py"]}, self.policy)
+        self.assertEqual(len(cleaned), 1)
+        self.assertEqual(cleaned[0][:3], ["docker", "rm", "-f"])
 
 
 if __name__ == "__main__":

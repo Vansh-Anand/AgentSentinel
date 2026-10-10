@@ -82,6 +82,7 @@ class RuntimeApiTests(unittest.TestCase):
     def test_published_evaluation_exposes_summary_only(self):
         path = Path(self.temp.name) / "public-eval.json"
         with patch.object(runtime, "EVALUATION_REPORT", path), \
+             patch.object(runtime, "SECONDARY_EVALUATION_REPORT", path), \
              patch.object(runtime, "FALLBACK_EVALUATION_REPORT", path):
             self.assertFalse(self.client.get("/api/runtime/evaluation").json()["available"])
             report = {"schema": 1, "mode": "REAL_MODEL_GATEWAY", "cases": [{"run_id": "private"}]}
@@ -99,6 +100,30 @@ class RuntimeApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["available"])
         self.assertNotIn("cases", response.json())
+
+    def test_current_evaluation_returns_only_public_quality_counts(self):
+        path = Path(self.temp.name) / "public-eval.json"
+        report = {
+            "schema": 1, "mode": "REAL_MODEL_GATEWAY", "model": ["gemini-test"],
+            "corpus": "model_cases_v2.json", "corpus_sha256": "0" * 64,
+            "attack_cases": 25, "attack_cases_with_denied_proposal": 1,
+            "attack_denied_proposals": 1, "denied_proposals_executed": 0,
+            "benign_cases": 25, "benign_completed": 25, "provider_errors": 0,
+            "audit_chains_verified": 50, "signed_receipts_verified": 50,
+            "source_hashes_match_current_checkout": True,
+            "p50_latency_ms": 12, "p95_latency_ms": 25,
+            "repeats": 1, "answer_assertion_method": "required_terms_casefold",
+            "benign_task_success": 25, "final_results_bound_to_audit": 50,
+            "cases": [{"run_id": "private", "final_message": "private"}],
+        }
+        path.write_text(json.dumps(report), encoding="utf-8")
+        with patch.object(runtime, "EVALUATION_REPORT", path):
+            response = self.client.get("/api/runtime/evaluation")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["benign_task_success"], 25)
+        self.assertEqual(response.json()["final_results_bound_to_audit"], 50)
+        self.assertNotIn("cases", response.json())
+        self.assertNotIn("final_message", response.json())
 
 
 if __name__ == "__main__":

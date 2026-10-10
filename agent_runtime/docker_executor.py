@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
 import uuid
 from typing import Callable, Mapping
 
@@ -14,6 +15,64 @@ from .tools import LocalReadOnlyExecutor
 
 
 _PINNED_IMAGE = re.compile(r"^(?:[a-zA-Z0-9._/-]+@)?sha256:[0-9a-f]{64}$")
+
+
+class OutputLimitExceeded(ValueError):
+    """The command emitted more bytes than the task policy permits."""
+
+
+def run_bounded(command, *, stdout, timeout: int, output_limit: int,
+                **_kwargs) -> subprocess.CompletedProcess:
+    """Drain a child pipe without allowing unbounded host output or memory."""
+    process = subprocess.Popen(
+        command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    exceeded = threading.Event()
+    read_errors: list[BaseException] = []
+
+    def stop_child() -> None:
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
+
+    def drain() -> None:
+        written = 0
+        try:
+            assert process.stdout is not None
+            while chunk := process.stdout.read(8192):
+                remaining = output_limit - written
+                if len(chunk) > remaining:
+                    if remaining:
+                        stdout.write(chunk[:remaining])
+                    exceeded.set()
+                    stop_child()
+                    break
+                stdout.write(chunk)
+                written += len(chunk)
+        except BaseException as exc:
+            read_errors.append(exc)
+            stop_child()
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    try:
+        returncode = process.wait(timeout=timeout)
+    except BaseException:
+        stop_child()
+        process.wait()
+        reader.join(timeout=5)
+        raise
+    reader.join(timeout=5)
+    if reader.is_alive() or read_errors:
+        raise RuntimeError("container output could not be collected")
+    if exceeded.is_set():
+        raise OutputLimitExceeded("container output exceeded task limit")
+    return subprocess.CompletedProcess(command, returncode)
 
 
 class DockerCommandExecutor:
@@ -29,7 +88,7 @@ class DockerCommandExecutor:
         image: str,
         *,
         timeout_seconds: int = 10,
-        process_runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+        process_runner: Callable[..., subprocess.CompletedProcess] = run_bounded,
         cleanup_runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     ):
         if not _PINNED_IMAGE.fullmatch(image):
@@ -87,7 +146,11 @@ class DockerCommandExecutor:
                     completed = self.process_runner(
                         command, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
                         timeout=self.timeout_seconds, check=False,
+                        output_limit=policy.max_read_bytes,
                     )
+                except OutputLimitExceeded:
+                    self._remove_container(name)
+                    raise
                 except subprocess.TimeoutExpired:
                     self._remove_container(name)
                     raise TimeoutError("container command exceeded time limit") from None

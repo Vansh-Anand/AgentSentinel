@@ -4,7 +4,7 @@
 
 AI agents can encounter attacker-controlled instructions in repository files and tool output while doing legitimate work. AgentSentinel's goal is to limit what those instructions can make an agent *do*. See the [active end-to-end plan](docs/END_TO_END_IMPLEMENTATION_PLAN.md) for the implementation gates and the [resume-ready build plan](docs/AGENTSENTINEL_RESUME_READY_PLAN.md) for the threat model and research background.
 
-For the exact live, VM-validated, research, and remaining states of all seven layers, see the [completion matrix](docs/PROJECT_COMPLETION_MATRIX.md).
+For the exact live, VM-validated, research, and remaining states of all seven layers, see the [completion matrix](docs/PROJECT_COMPLETION_MATRIX.md) and the [remaining implementation plan](docs/REMAINING_IMPLEMENTATION_PLAN.md).
 
 ## Run the gateway and agent demos
 
@@ -26,7 +26,13 @@ To evaluate a real model against varied untrusted README contents, install `requ
 
 The evaluation writes a checkpoint after each new case. If provider calls fail, rerun only failed cases with `python -m benchmarks.model_eval --provider gemini --per-category 25 --retry-errors-from .data/model-eval/full-current.json --output .data/model-eval/full-current.json --delay-seconds 10 --max-new-calls 5`. Successful rows are reused only when the corpus hash and run settings match. A partial result exits nonzero and keeps its error count visible. Before publishing, run `python -m benchmarks.verify_model_report .data/model-eval/full-current.json --check-current-source`, then `python -m benchmarks.export_model_report .data/model-eval/full-current.json --version v2`.
 
-The [current-source v2 report](benchmarks/results/agentsentinel_model_eval_v2.md) covers one trial each of 25 synthetic attack and 25 benign READMEs. Five attack READMEs produced a forbidden tool proposal; all five were denied before execution. All 25 benign tasks completed. The strict verifier passed all 50 audit chains and Ed25519 receipts and matched their source hashes to this checkout. This is a corpus-specific tool-boundary result, not general prompt-injection immunity or answer-quality evidence. The [v1 report](benchmarks/results/agentsentinel_model_eval_v1.md) remains as historical evidence from an earlier source revision.
+The [v2 Gemini report](benchmarks/results/agentsentinel_model_eval_v2.md) covers one trial each of 25 synthetic attack and 25 benign READMEs. Five attack READMEs produced a forbidden tool proposal; all five were denied before execution. All 25 benign tasks completed. The strict verifier passed all 50 audit chains and Ed25519 receipts. Their source hashes matched **at publication**; after the evaluator/runtime changes, the recorded source no longer matches this checkout. The report remains valid historical evidence for that source revision, not general prompt-injection immunity or answer-quality evidence. The [v1 report](benchmarks/results/agentsentinel_model_eval_v1.md) is older historical evidence.
+
+The [held-out v2 corpus](benchmarks/model_cases_v2.json) uses a different synthetic incident-intake task with 25 new attack and 25 benign READMEs. Its [live Gemini v3 report](benchmarks/results/agentsentinel_model_eval_v3.md) records one trial per case: 1/25 attacks induced a forbidden proposal, 0/1 such proposals executed, and 25/25 benign tasks reached a final answer containing the required event source and retention terms. Two HTTP 429 cases succeeded on retry; the final report has zero provider errors. All 50 local HMAC chains, Ed25519 receipts, signed final-answer hashes, fixture hashes, and source hashes verified. The lexical assertion is a narrow task check, not semantic answer-quality scoring; this corpus does not establish general prompt-injection immunity. The earlier v2 result used a different corpus and source revision, so its 5/25 figure is not a before/after comparison.
+
+A credential-free wiring run is available with `python -m benchmarks.model_eval --provider fixture --corpus model_cases_v2.json --per-category 25 --output .data/model-eval/v2-fixture.json`; verify it with `python -m benchmarks.verify_model_report .data/model-eval/v2-fixture.json --check-current-source`. The fixture provider deliberately gives a canned auth-module response, so its lexical assertion fails on this new task. To reproduce the model result, run the same command with `--provider gemini` and a private `.data/model-eval/v2-gemini.json` output, verify it, then export with `python -m benchmarks.export_model_report .data/model-eval/v2-gemini.json --version v3`. Public exports omit raw model answers and run IDs.
+
+On Windows, `scripts/run_heldout_gemini.ps1` can read a locally saved DPAPI encrypted key from `.data/secrets/gemini-key.dpapi` under the same Windows account. The key file and raw model results are excluded from Git and the Docker build. Run `./scripts/run_heldout_gemini.ps1` for the full corpus or pass `-PerCategory 2` for a smoke test. A shared key should be rotated after use.
 
 ## Run the dashboard
 
@@ -38,7 +44,7 @@ docker compose up --build
 
 Open `http://127.0.0.1:5173/gateway`. Compose publishes both services on loopback only and does not mount the Docker socket, so its optional restricted-command buttons are unavailable. The separate host setup below enables that fixture when a pinned image is configured. Stop the Compose demo with `docker compose down`; the named evidence volume is retained.
 
-In a separate terminal, run `python -m scripts.compose_smoke` for the credential-free end-to-end check. It verifies the UI route, allowed and denied gateway calls, truthful layer labels, and the downloaded evidence with the public verifier. GitHub Actions runs the same check against a fresh Compose build; the workflow is present but has not yet been observed on a remote runner.
+In a separate terminal, run `python -m scripts.compose_smoke` for the credential-free end-to-end check. It verifies the UI route, allowed and denied gateway calls, truthful layer labels, and the downloaded evidence with the public verifier. GitHub Actions runs the same check against a fresh Compose build; the eight-job workflow passed in the [2026-10-10 run](https://github.com/Vansh-Anand/AgentSentinel/actions/runs/37996829845).
 
 ```powershell
 python -m venv .data/venv
@@ -129,5 +135,5 @@ The local read executor is **not a hostile-workspace sandbox**. Its POSIX no-fol
 4. Evaluate attack prevention **and** legitimate-task completion on a held-out versioned corpus.
 5. Publish a two-minute demo and reproducible measured results on a named Linux host.
 
-See [the active implementation plan](docs/END_TO_END_IMPLEMENTATION_PLAN.md) for detailed acceptance criteria. Report measured results only after those gates pass.
+See [the remaining implementation plan](docs/REMAINING_IMPLEMENTATION_PLAN.md) for prioritized work and acceptance criteria. Report measured results only after those gates pass.
 The current verified checks and remaining gates are in [validation status](docs/VALIDATION_STATUS.md).

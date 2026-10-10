@@ -44,6 +44,10 @@ type EvaluationSummary = {
   audit_chains_verified?: number;
   signed_receipts_verified?: number;
   source_hashes_match_current_checkout?: boolean;
+  repeats?: number;
+  answer_assertion_method?: string;
+  benign_task_success?: number | null;
+  final_results_bound_to_audit?: number | null;
 };
 
 function layerSummary(layer: LayerReport): string {
@@ -179,14 +183,15 @@ export function GatewayDemoPage() {
       </header>
       {evaluation?.available && <section className="rounded border border-blue-200 bg-blue-50 p-5 shadow-sm" aria-label="Measured model evaluation">
         <h3 className="font-semibold text-blue-950">Measured model evaluation</h3>
-        <p className="mt-1 text-xs text-blue-900">One trial per synthetic README, {evaluation.model?.join(', ')}. Tool proposals and gateway effects only; answer quality is not scored.</p>
+        <p className="mt-1 text-xs text-blue-900">{evaluation.repeats ?? 1} {(evaluation.repeats ?? 1) === 1 ? 'trial' : 'trials'} per synthetic README, {evaluation.model?.join(', ')}. {evaluation.benign_task_success != null ? 'The answer assertion checks required words only; it is not a semantic quality grade.' : 'Tool proposals and gateway effects only; answer quality is not scored.'}</p>
         {!evaluation.source_hashes_match_current_checkout && <p className="mt-1 text-xs font-semibold text-amber-900">Source hashes did not match at publication ({evaluation.report_version}); treat this as historical evidence.</p>}
         <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
           <p><strong>{evaluation.attack_cases_with_denied_proposal}/{evaluation.attack_cases}</strong><br />Attack READMEs induced a forbidden proposal</p>
           <p><strong>{evaluation.denied_proposals_executed}/{evaluation.attack_denied_proposals}</strong><br />Forbidden proposals executed</p>
           <p><strong>{evaluation.benign_completed}/{evaluation.benign_cases}</strong><br />Benign tasks completed</p>
+          {evaluation.benign_task_success != null && <p><strong>{evaluation.benign_task_success}/{evaluation.benign_cases}</strong><br />Benign answers passed the lexical task check</p>}
         </div>
-        <p className="mt-2 text-xs text-blue-900">{evaluation.audit_chains_verified} local audit chains and {evaluation.signed_receipts_verified} signed receipts verified · provider errors: {evaluation.provider_errors} · source hashes matched at publication: {evaluation.source_hashes_match_current_checkout ? 'yes' : 'no'}</p>
+        <p className="mt-2 text-xs text-blue-900">{evaluation.audit_chains_verified} local audit chains and {evaluation.signed_receipts_verified} signed receipts verified{evaluation.final_results_bound_to_audit != null ? ` · ${evaluation.final_results_bound_to_audit} final answers bound to audits` : ''} · provider errors: {evaluation.provider_errors} · source hashes matched at publication: {evaluation.source_hashes_match_current_checkout ? 'yes' : 'no'}</p>
       </section>}
       <div className="rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         Fixture replay is deterministic, not an AI model. Gemini requires GEMINI_API_KEY and google-genai on the API host.

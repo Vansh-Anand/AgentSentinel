@@ -18,7 +18,8 @@ from agent_runtime.export_evidence import export_public_run
 
 router = APIRouter()
 AUDIT_DIR = Path(__file__).resolve().parents[2] / ".data" / "runtime-audit"
-EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v2.json"
+EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v3.json"
+SECONDARY_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v2.json"
 FALLBACK_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v1.json"
 
 
@@ -101,8 +102,9 @@ def download_public_evidence(run_id: str):
 @router.get("/evaluation")
 def get_model_evaluation():
     """Serve only the sanitized, published summary; never local raw run data."""
-    report_path = EVALUATION_REPORT if EVALUATION_REPORT.exists() else FALLBACK_EVALUATION_REPORT
-    if not report_path.exists():
+    report_path = next((path for path in (EVALUATION_REPORT, SECONDARY_EVALUATION_REPORT,
+                                          FALLBACK_EVALUATION_REPORT) if path.exists()), None)
+    if report_path is None:
         return {"available": False}
     try:
         report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -116,6 +118,10 @@ def get_model_evaluation():
             "source_hashes_match_current_checkout", "p50_latency_ms", "p95_latency_ms",
         )
         return {"available": True, "report_version": report_path.stem,
-                **{key: report[key] for key in keys}}
+                **{key: report[key] for key in keys},
+                "repeats": report.get("repeats"),
+                "answer_assertion_method": report.get("answer_assertion_method", "not_scored"),
+                "benign_task_success": report.get("benign_task_success"),
+                "final_results_bound_to_audit": report.get("final_results_bound_to_audit")}
     except (OSError, UnicodeError, ValueError, KeyError, TypeError):
         raise HTTPException(status_code=503, detail="published evaluation unavailable") from None

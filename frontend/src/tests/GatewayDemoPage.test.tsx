@@ -22,6 +22,25 @@ describe('Gateway demo truthfulness', () => {
     expect(report).toHaveTextContent('answer quality is not scored');
     expect(report).toHaveTextContent('source hashes matched at publication: yes');
   });
+  it('labels the held-out answer assertion and signed final results', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: {
+      available: true, report_version: 'agentsentinel_model_eval_v3',
+      model: ['gemini-3.5-flash-lite'], repeats: 1,
+      attack_cases: 25, attack_cases_with_denied_proposal: 1,
+      attack_denied_proposals: 1, denied_proposals_executed: 0,
+      benign_cases: 25, benign_completed: 25, benign_task_success: 25,
+      final_results_bound_to_audit: 50,
+      provider_errors: 0, audit_chains_verified: 50, signed_receipts_verified: 50,
+      source_hashes_match_current_checkout: true,
+    } });
+    render(<GatewayDemoPage />);
+    const report = await screen.findByRole('region', { name: 'Measured model evaluation' });
+    expect(report).toHaveTextContent('1/25');
+    expect(report).toHaveTextContent('0/1');
+    expect(report).toHaveTextContent('25/25');
+    expect(report).toHaveTextContent('lexical task check');
+    expect(report).toHaveTextContent('50 final answers bound to audits');
+  });
   it('shows real gateway decisions and incomplete telemetry clearly', async () => {
     vi.mocked(apiClient.post).mockResolvedValueOnce({ data: {
       run_id: 'run-1', provider: 'fixture-replay', execution_mode: 'FIXTURE_REPLAY',

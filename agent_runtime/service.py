@@ -111,7 +111,11 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
         )
         fixture_sha256 = hashlib.sha256(readme_text.encode("utf-8")).hexdigest()
         audit.append({"event": "LAYER_REPORT", "run_id": run_id,
-                      "fixture_sha256": fixture_sha256, "layers": layers})
+                      "fixture_sha256": fixture_sha256,
+                      "stop_reason": run.stop_reason,
+                      "final_message_sha256": hashlib.sha256(
+                          run.final_message.encode("utf-8")).hexdigest(),
+                      "layers": layers})
         audit_verification = verify_chain(log_path, anchor_path, key)
         payload = build_receipt_payload(run_id=run_id, audit_verification=audit_verification,
                                         layers=layers, fixture_sha256=fixture_sha256,
