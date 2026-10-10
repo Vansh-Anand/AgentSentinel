@@ -44,7 +44,7 @@ docker compose up --build
 
 Open `http://127.0.0.1:5173/gateway`. Compose publishes both services on loopback only and does not mount the Docker socket, so its optional restricted-command buttons are unavailable. The separate host setup below enables that fixture when a pinned image is configured. Stop the Compose demo with `docker compose down`; the named evidence volume is retained.
 
-In a separate terminal, run `python -m scripts.compose_smoke` for the credential-free end-to-end check. It verifies the UI route, allowed and denied gateway calls, truthful layer labels, and the downloaded evidence with the public verifier. GitHub Actions runs the same check against a fresh Compose build; the eight-job workflow passed in the [2026-10-10 run](https://github.com/Vansh-Anand/AgentSentinel/actions/runs/37996829845).
+In a separate terminal, run `python -m scripts.compose_smoke` for the credential-free end-to-end check. It verifies the UI route, allowed and denied gateway calls, truthful layer labels, and the downloaded evidence with the public verifier. GitHub Actions runs the same check against a fresh Compose build; all eight jobs passed in the [2026-10-11 run](https://github.com/Vansh-Anand/AgentSentinel/actions/runs/38078948110).
 
 ```powershell
 python -m venv .data/venv
