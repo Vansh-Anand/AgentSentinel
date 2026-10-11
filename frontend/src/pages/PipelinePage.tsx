@@ -3,6 +3,7 @@ import { ScenarioSelector } from '../components/pipeline/ScenarioSelector';
 import { PipelineFlow } from '../components/pipeline/PipelineFlow';
 import { InterceptionDetails } from '../components/pipeline/InterceptionDetails';
 import { PipelineStatistics } from '../components/pipeline/PipelineStatistics';
+import { ChallengeLab } from '../components/pipeline/ChallengeLab';
 import { usePipelineExecution } from '../hooks/usePipelineExecution';
 import { useSessionStatistics } from '../hooks/useSessionStatistics';
 import { useDemoOrchestrator } from '../hooks/useDemoOrchestrator';
@@ -10,15 +11,15 @@ import { ErrorState } from '../components/common/ErrorState';
 import { Shield, Play, Square, RotateCcw, CheckCircle, Database, XCircle, AlertTriangle } from 'lucide-react';
 
 const getVerdictReason = (layer: string, decision: string) => {
-  if (decision === 'ALLOW') return 'No malicious intent or policy violations detected across the pipeline.';
+  if (decision === 'ALLOW') return 'This research scenario reached its allow result; the simulated layers do not establish live safety.';
   switch (layer) {
-    case 'L1': return 'Action violates allowed grammar/policy constraints.';
-    case 'L2': return 'Obfuscated command normalized and rejected by semantic policy.';
-    case 'L3': return 'Kernel execution behavior matched restricted anomaly patterns.';
-    case 'L4': return 'Action sequence diverged significantly from learned behavioral baseline.';
-    case 'L5': return 'Temporal sequence produced excessive risk crossing governance thresholds.';
-    case 'L6': return 'Cryptographic evidence chain tampering detected.';
-    case 'L7': return 'System integrity attestation failed.';
+    case 'L1': return 'Research scenario: the simulated orchestrator rejected this proposal at L1.';
+    case 'L2': return 'Research scenario: the simulated orchestrator rejected this command at L2.';
+    case 'L3': return 'Simulated kernel event replay; no live kernel telemetry was collected.';
+    case 'L4': return 'Synthetic behavioral divergence result; no live learned baseline was evaluated.';
+    case 'L5': return 'Simulated temporal risk threshold; no live cross-session governance ran.';
+    case 'L6': return 'Simulated evidence-tampering scenario. Use the challenge lab for a real HMAC integrity check.';
+    case 'L7': return 'Hardware attestation is unavailable on this host.';
     default: return 'Action was intercepted by security policy.';
   }
 };
@@ -26,12 +27,12 @@ const getVerdictReason = (layer: string, decision: string) => {
 const getExecutionModeDisplay = (layer: string, decision: string) => {
   if (decision === 'ALLOW') return { mode: 'SIMULATED', desc: 'Execution spanned simulated layers (L3-L5)' };
   switch (layer) {
-    case 'L1': return { mode: 'REAL_RUNTIME', desc: 'Native Grammar-Constrained Decoding' };
-    case 'L2': return { mode: 'REAL_RUNTIME', desc: 'Native Semantic Deobfuscation' };
+    case 'L1': return { mode: 'SIMULATED', desc: 'Research orchestrator scenario; use the challenge lab for a schema check.' };
+    case 'L2': return { mode: 'SIMULATED', desc: 'Research orchestrator scenario; use the challenge lab for live gateway enforcement.' };
     case 'L3': return { mode: 'SIMULATED', desc: 'Simulated telemetry replay or mock execution.' };
     case 'L4': return { mode: 'SYNTHETIC', desc: 'Detector evaluated on synthetic benchmark data.' };
     case 'L5': return { mode: 'SIMULATED', desc: 'Demonstration heuristic, not live Bayesian inference.' };
-    case 'L6': return { mode: 'REAL_RUNTIME', desc: 'Native Cryptographic Chain' };
+    case 'L6': return { mode: 'SIMULATED', desc: 'Preset result; use the challenge lab for a real HMAC check.' };
     case 'L7': return { mode: 'UNAVAILABLE', desc: 'Hardware attestation unavailable.' };
     default: return { mode: 'UNKNOWN', desc: '' };
   }
@@ -56,7 +57,7 @@ export const PipelinePage: React.FC = () => {
             <Shield className="w-6 h-6 mr-2 text-blue-600" />
             AgentSentinel Research Pipeline
           </h2>
-          <p className="mt-2 text-gray-600">Simulate and visualize adversarial scenarios through the L1-L7 defense layers in real-time.</p>
+          <p className="mt-2 text-gray-600">Compare editable challenge checks with the research pipeline scenario replay. Each result states its proof level.</p>
         </div>
         <div className="flex space-x-3">
           {(demo.demoState === 'IDLE' || demo.demoState === 'CANCELLED' || demo.demoState === 'COMPLETE') && (
@@ -66,7 +67,7 @@ export const PipelinePage: React.FC = () => {
               className="flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-md shadow-sm transition-colors disabled:opacity-50"
             >
               <Play className="w-4 h-4 mr-2" />
-              Run Full Demo
+              Run Research Replay
             </button>
           )}
           {(demo.demoState === 'RUNNING' || demo.demoState === 'PAUSED_BETWEEN' || demo.demoState === 'ERROR') && (
@@ -80,6 +81,7 @@ export const PipelinePage: React.FC = () => {
           )}
         </div>
       </div>
+      <ChallengeLab />
       
       {(demo.demoState === 'RUNNING' || demo.demoState === 'PAUSED_BETWEEN') && (
         <div className="bg-amber-100 border border-amber-300 rounded-md p-3 mb-6 flex items-center justify-between shadow-sm animate-pulse">
@@ -116,6 +118,7 @@ export const PipelinePage: React.FC = () => {
         <ErrorState title="Execution Failed" message={execution.error} className="mb-6" />
       )}
 
+      <h3 className="text-lg font-semibold text-gray-800">Research replay statistics</h3>
       <PipelineStatistics stats={stats} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -137,7 +140,7 @@ export const PipelinePage: React.FC = () => {
               Scenarios are processed synchronously by the backend orchestrator. The pipeline flow animation is a UI visualization of the returned event trace, not a WebSocket stream.
             </p>
             <p>
-              On Windows/Mock environments, kernel telemetry (L3) and container isolation (L7) are clearly marked as <strong>SIMULATED</strong> or <strong>UNAVAILABLE</strong> in adherence to truthfulness requirements.
+              This scenario runner is a research replay. Its preset L3-L6 outcomes are simulated; hardware L7 is unavailable on this host. Use the challenge lab above for live L2 policy and L6 HMAC checks.
             </p>
           </div>
         </div>
@@ -240,11 +243,13 @@ export const PipelinePage: React.FC = () => {
                       <div className={`p-6 rounded-lg shadow-xl border ${
                         execution.result.overall_decision === 'ALLOW' ? 'bg-emerald-950 border-emerald-800' :
                         execution.result.overall_decision === 'FREEZE' ? 'bg-orange-950 border-orange-800' :
+                        execution.result.overall_decision === 'UNAVAILABLE' ? 'bg-gray-900 border-gray-700' :
                         'bg-red-950 border-red-800'
                       }`}>
                         <div className="flex items-start space-x-4">
                           {execution.result.overall_decision === 'ALLOW' ? <CheckCircle className="w-10 h-10 text-emerald-400 flex-shrink-0" /> :
                            execution.result.overall_decision === 'FREEZE' ? <AlertTriangle className="w-10 h-10 text-orange-400 flex-shrink-0" /> :
+                           execution.result.overall_decision === 'UNAVAILABLE' ? <AlertTriangle className="w-10 h-10 text-amber-400 flex-shrink-0" /> :
                            <XCircle className="w-10 h-10 text-red-400 flex-shrink-0" />}
                           
                           <div className="flex-1">
@@ -253,7 +258,7 @@ export const PipelinePage: React.FC = () => {
                               <span className={`text-3xl font-black tracking-tight ${
                                 execution.result.overall_decision === 'ALLOW' ? 'text-emerald-400' :
                                 execution.result.overall_decision === 'FREEZE' ? 'text-orange-400' :
-                                'text-red-400'
+                                execution.result.overall_decision === 'UNAVAILABLE' ? 'text-amber-400' : 'text-red-400'
                               }`}>
                                 {execution.result.overall_decision}
                               </span>

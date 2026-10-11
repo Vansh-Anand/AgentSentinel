@@ -24,7 +24,7 @@ export const AppShell: React.FC = () => {
       try {
         await checkHealth();
         setBackendStatus('connected');
-      } catch (err) {
+      } catch {
         setBackendStatus('unavailable');
       }
     };
@@ -36,14 +36,14 @@ export const AppShell: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen flex-col bg-gray-50 overflow-hidden lg:flex-row">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white flex flex-col flex-shrink-0">
-        <div className="h-16 flex items-center px-6 border-b border-gray-800">
+      <div className="w-full bg-gray-900 text-white flex flex-col flex-shrink-0 lg:w-64">
+        <div className="h-12 flex items-center px-4 border-b border-gray-800 lg:h-16 lg:px-6">
           <Cpu className="w-6 h-6 text-blue-500 mr-3" />
           <span className="font-bold text-lg tracking-tight">AgentSentinel</span>
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex gap-1 overflow-x-auto px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:overflow-y-auto lg:px-4 lg:py-6">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href || 
                             (item.href !== '/' && location.pathname.startsWith(item.href));
@@ -51,7 +51,7 @@ export const AppShell: React.FC = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+                className={`flex flex-shrink-0 items-center whitespace-nowrap px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
                   isActive
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -63,7 +63,7 @@ export const AppShell: React.FC = () => {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-gray-800 bg-gray-900">
+        <div className="hidden p-4 border-t border-gray-800 bg-gray-900 lg:block">
           <div className="flex items-center text-xs">
             {backendStatus === 'checking' && (
               <div className="flex items-center text-gray-400">
@@ -90,11 +90,11 @@ export const AppShell: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
-          <h1 className="text-xl font-semibold text-gray-800">
+        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 flex-shrink-0 lg:h-16 lg:px-6">
+          <h1 className="text-lg font-semibold text-gray-800 lg:text-xl">
             {navigation.find(n => location.pathname === n.href || (n.href !== '/' && location.pathname.startsWith(n.href)))?.name || 'Dashboard'}
           </h1>
-          <div className="flex items-center space-x-3 text-sm text-gray-500">
+          <div className="hidden items-center space-x-3 text-sm text-gray-500 xl:flex">
             <span className="font-medium mr-2">Execution Truthfulness Legend:</span>
             <ExecutionModeBadge mode={ExecutionMode.REAL_RUNTIME} />
             <ExecutionModeBadge mode={ExecutionMode.SIMULATED} />
@@ -105,8 +105,8 @@ export const AppShell: React.FC = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+          <div className="mx-auto max-w-7xl min-w-0">
             {backendStatus === 'unavailable' ? (
               <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-6 flex flex-col items-center justify-center text-center mt-12">
                 <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />

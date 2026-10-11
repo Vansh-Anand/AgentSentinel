@@ -15,7 +15,7 @@ from .risk import RiskAssessment
 _MEASURED_SOURCE_FILES = (
     "agent_runtime/agent.py", "agent_runtime/gateway.py", "agent_runtime/policy.py",
     "agent_runtime/risk.py", "agent_runtime/effectseal.py", "agent_runtime/service.py",
-    "agent_runtime/providers.py", "agent_runtime/layer_report.py", "agent_runtime/evidence.py",
+    "agent_runtime/providers.py", "agent_runtime/local_key.py", "agent_runtime/layer_report.py", "agent_runtime/evidence.py",
     "agent_runtime/ledger.py", "agent_runtime/tools.py", "agent_runtime/docker_executor.py",
     "agent_runtime/docker_demo.py", "agent_runtime/signing.py", "agent_runtime/native_effects.py",
     "l3_ebpf/kernel/events.h", "l3_ebpf/kernel/execve.bpf.c",
@@ -93,6 +93,7 @@ def build_layer_report(
     measurement = software_measurement(policy)
     return [
         {"layer": "L1", "name": "Proposal format", "mode": ("REAL_MODEL_STRUCTURED_OUTPUT" if model else
+            "MANUAL_PROPOSAL" if provider == "manual-policy-probe" else
             "FIXED_COMMAND_FIXTURE" if provider == "docker-fixture" else "FIXTURE_REPLAY"),
          "evidence": {"provider": provider, "model": model, "gateway_proposals": len(observed)}},
         {"layer": "L2", "name": "Task policy", "mode": "REAL_RUNTIME",

@@ -2,7 +2,7 @@ import React from 'react';
 import { PipelineLayerCard } from './PipelineLayerCard';
 import { usePipelineExecution } from '../../hooks/usePipelineExecution';
 import { ShieldAlert, ArrowDown, Loader2 } from 'lucide-react';
-import { ExecutionModeBadge } from '../common/ExecutionModeBadge';
+import { ExecutionMode } from '../../types/api';
 
 interface PipelineFlowProps {
   execution: ReturnType<typeof usePipelineExecution>;
@@ -16,6 +16,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
   const showInterceptBanner = result && result.overall_decision === 'BLOCK';
   const showFreezeBanner = result && result.overall_decision === 'FREEZE';
   const showAllowBanner = result && result.overall_decision === 'ALLOW';
+  const showUnavailableBanner = result && result.overall_decision === 'UNAVAILABLE';
 
   const formatLatency = (ns?: number) => ns ? `${(ns / 1_000_000).toFixed(2)} ms` : '— ms';
 
@@ -43,7 +44,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Live Pipeline Execution</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Pipeline Scenario Replay</h3>
         {isRunning && <span className="text-sm font-medium text-blue-600 animate-pulse">Running simulation...</span>}
       </div>
 
@@ -52,7 +53,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
           id="L1"
           name="Grammar-Constrained Decoding"
           state={layerStates.L1}
-          executionMode={activeResult?.L1?.latency ? activeResult.L3?.execution_mode : undefined}
+          executionMode={activeResult?.L1 ? ExecutionMode.SIMULATED : undefined}
           details={activeResult?.L1?.metadata ? 
             <div className="space-y-1">
               <div><span className="font-semibold text-gray-700">Tool Evaluated:</span> {activeResult.L1.metadata.tool_name}</div>
@@ -73,7 +74,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
           id="L2"
           name="Semantic Deobfuscation and Normalization"
           state={layerStates.L2}
-          executionMode={activeResult?.L2?.latency ? activeResult.L3?.execution_mode : undefined}
+          executionMode={activeResult?.L2 ? ExecutionMode.SIMULATED : undefined}
           details={activeResult?.L2 ? 
             <div className="space-y-1">
               {activeResult.L2.normalized_command && <div><span className="font-semibold text-gray-700">Canonical:</span> <code className="bg-gray-100 px-1 rounded">{activeResult.L2.normalized_command}</code></div>}
@@ -129,7 +130,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
           id="L5"
           name="Temporal Risk Chain Correlation"
           state={layerStates.L5}
-          executionMode={activeResult?.L4?.execution_mode}
+          executionMode={activeResult?.L5?.execution_mode}
           details={activeResult?.L5?.bayesian_probability !== undefined ? 
             <div className="space-y-1">
               <div><span className="font-semibold text-gray-700">Bayesian Risk:</span> {(activeResult.L5.bayesian_probability * 100).toFixed(1)}%</div>
@@ -146,7 +147,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
           id="L6"
           name="Cryptographic Evidence Chain / ECES"
           state={layerStates.L6}
-          executionMode={activeResult?.L3?.execution_mode}
+          executionMode={activeResult?.L6?.execution_mode}
           details={activeResult?.L6?.evidence_chain_reference ? 
             <div className="space-y-1">
               <div><span className="font-semibold text-gray-700">Chain Ref:</span> <span className="font-mono text-xs">{activeResult.L6.evidence_chain_reference.substring(0, 16)}</span></div>
@@ -163,7 +164,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
           id="L7"
           name="Trusted Execution Environment Attestation"
           state={layerStates.L7}
-          executionMode={activeResult?.L3?.execution_mode}
+          executionMode={activeResult?.L7?.execution_mode}
           details={activeResult?.L7?.isolation_status ? 
             <div className="space-y-1">
               <div><span className="font-semibold text-gray-700">Status:</span> {activeResult.L7.isolation_status}</div>
@@ -189,7 +190,7 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-red-300 text-sm uppercase tracking-wider font-semibold">Execution Mode</span>
-                  <ExecutionModeBadge mode={result.L3?.execution_mode || result.L4?.execution_mode || 'UNAVAILABLE'} className="bg-red-800 text-white border-red-700" />
+                  <span className="rounded bg-red-800 px-2 py-1 text-sm text-white">SIMULATED</span>
                 </div>
               </div>
             </div>
@@ -235,6 +236,12 @@ export const PipelineFlow: React.FC<PipelineFlowProps> = ({ execution }) => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {showUnavailableBanner && !isRunning && (
+          <div className="rounded border border-amber-300 bg-amber-50 p-4 text-center text-amber-900">
+            Hardware attestation unavailable on this host. No L7 interception was observed.
           </div>
         )}
       </div>

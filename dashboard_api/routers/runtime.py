@@ -2,8 +2,12 @@
 
 from pathlib import Path
 from io import BytesIO
+import importlib.util
 import json
+import os
+import shlex
 from tempfile import TemporaryDirectory
+from typing import Literal
 import uuid
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -12,30 +16,77 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from agent_runtime.service import run_demo_task, run_container_demo
+from agent_runtime.agent import ToolProposal
 from agent_runtime.evidence import verify_chain
 from agent_runtime.export_evidence import export_public_run
+from agent_runtime.local_key import gemini_key_configured
+from agent_runtime.service import FIXTURE_README
 
 
 router = APIRouter()
 AUDIT_DIR = Path(__file__).resolve().parents[2] / ".data" / "runtime-audit"
-EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v3.json"
-SECONDARY_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v2.json"
-FALLBACK_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v1.json"
+EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v4.json"
+SECONDARY_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v3.json"
+FALLBACK_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v2.json"
+LEGACY_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v1.json"
 
 
 class RunRequest(BaseModel):
     task: str = Field(min_length=1, max_length=4000)
     provider: str = "fixture"
+    readme_text: str | None = Field(default=None, min_length=1, max_length=16_384)
 
 
 class ContainerDemoRequest(BaseModel):
     attack: bool = False
 
 
+class PolicyProbeRequest(BaseModel):
+    action: Literal["read_file", "execute_command", "http_post"]
+    target: str = Field(min_length=1, max_length=512)
+
+
 @router.post("/run")
 def run_agent_task(request: RunRequest):
     try:
-        return run_demo_task(request.task, request.provider, AUDIT_DIR)
+        return run_demo_task(request.task, request.provider, AUDIT_DIR,
+                             readme_text=request.readme_text if request.readme_text is not None
+                             else FIXTURE_README)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/provider-status")
+def provider_status():
+    """Configuration only; never return or probe the credential itself."""
+    sdk_installed = (importlib.util.find_spec("google") is not None
+                     and importlib.util.find_spec("google.genai") is not None)
+    return {"fixture_available": True,
+            "gemini_key_configured": gemini_key_configured(),
+            "gemini_sdk_installed": sdk_installed,
+            "gemini_model": os.environ.get("AGENTSENTINEL_GEMINI_MODEL", "gemini-3.5-flash-lite"),
+            "workspace": "disposable-synthetic"}
+
+
+@router.post("/probe")
+def run_policy_probe(request: PolicyProbeRequest):
+    """Exercise L2 with one manual proposal; no model or arbitrary host files."""
+    target = request.target.strip()
+    if not target:
+        raise HTTPException(status_code=400, detail="probe target cannot be blank")
+    try:
+        if request.action == "read_file":
+            arguments = {"path": target}
+        elif request.action == "execute_command":
+            arguments = {"argv": shlex.split(target)}
+        else:
+            arguments = {"url": target, "data": "synthetic-only"}
+        return run_demo_task(
+            "Evaluate one manually submitted tool proposal.", "probe", AUDIT_DIR,
+            readme_text="# Synthetic policy probe\n", proposal=ToolProposal(request.action, arguments),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -103,7 +154,8 @@ def download_public_evidence(run_id: str):
 def get_model_evaluation():
     """Serve only the sanitized, published summary; never local raw run data."""
     report_path = next((path for path in (EVALUATION_REPORT, SECONDARY_EVALUATION_REPORT,
-                                          FALLBACK_EVALUATION_REPORT) if path.exists()), None)
+                                          FALLBACK_EVALUATION_REPORT, LEGACY_EVALUATION_REPORT)
+                        if path.exists()), None)
     if report_path is None:
         return {"available": False}
     try:

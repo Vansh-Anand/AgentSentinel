@@ -22,7 +22,7 @@ export const PipelineStatistics: React.FC<PipelineStatisticsProps> = ({ stats })
         <div className="p-4 flex flex-col items-center justify-center">
           <div className="flex items-center space-x-2 text-gray-400 mb-2">
             <Activity className="w-4 h-4" />
-            <span className="text-xs font-bold tracking-wider uppercase">Attacks Run</span>
+            <span className="text-xs font-bold tracking-wider uppercase">Scenarios Run</span>
           </div>
           <div className="text-3xl font-black text-white">
             <AnimatedNumber value={stats.attacksRun} />
@@ -32,7 +32,7 @@ export const PipelineStatistics: React.FC<PipelineStatisticsProps> = ({ stats })
         <div className="p-4 flex flex-col items-center justify-center">
           <div className="flex items-center space-x-2 text-red-400 mb-2">
             <ShieldAlert className="w-4 h-4" />
-            <span className="text-xs font-bold tracking-wider uppercase">Blocked</span>
+            <span className="text-xs font-bold tracking-wider uppercase">L1/L2 Blocked</span>
           </div>
           <div className="text-3xl font-black text-red-400">
             <AnimatedNumber value={stats.blocked} />

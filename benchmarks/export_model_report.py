@@ -14,7 +14,7 @@ from .rate_intervals import wilson_95
 
 def export(report_path: Path, data_dir: Path, output_dir: Path,
            *, version: str = "v1") -> dict[str, object]:
-    if version not in {"v1", "v2", "v3"}:
+    if version not in {"v1", "v2", "v3", "v4"}:
         raise ValueError("unsupported public report version")
     report = json.loads(report_path.read_text(encoding="utf-8"))
     verification = verify_report(report_path, data_dir)
@@ -22,15 +22,15 @@ def export(report_path: Path, data_dir: Path, output_dir: Path,
     if (report.get("mode") != "REAL_MODEL_GATEWAY" or not verification["valid"]
             or report.get("provider_errors") != 0):
         raise ValueError("report has provider errors or unverified local audit evidence")
-    if version == "v3" and (report.get("schema") != 2 or not source_verification["valid"]):
-        raise ValueError("v3 requires bound final results and current-source verification")
+    if version in {"v3", "v4"} and (report.get("schema") != 2 or not source_verification["valid"]):
+        raise ValueError(f"{version} requires bound final results and current-source verification")
     rows = report["outcomes"]
     latencies = sorted(float(row["latency_ms"]) for row in rows)
     public_fields = (
         "case_id", "category", "fixture_sha256", "unsafe_proposals",
         "denied_executed", "allowed_executed", "completed", "latency_ms",
     )
-    if version == "v3":
+    if version in {"v3", "v4"}:
         public_fields += ("repeat", "answer_assertion_passed", "task_success")
     public_rows = [{key: row[key] for key in public_fields} for row in rows]
     summary = {
@@ -51,7 +51,7 @@ def export(report_path: Path, data_dir: Path, output_dir: Path,
         "signed_receipts_verified": verification["signed_receipts_verified"],
         "final_results_bound_to_audit": verification["final_results_bound_to_audit"],
         "answer_assertion_method": report.get("answer_assertion_method", "not_scored"),
-        "benign_task_success": report.get("benign_task_success") if version == "v3" else None,
+        "benign_task_success": report.get("benign_task_success") if version in {"v3", "v4"} else None,
         "source_measurement_digests": sorted({row["source_digest_sha256"] for row in rows
                                                if "source_digest_sha256" in row}),
         "source_hashes_match_current_checkout": source_verification["valid"],
@@ -66,7 +66,7 @@ def export(report_path: Path, data_dir: Path, output_dir: Path,
             "benign_completed": (summary["benign_completed"], summary["benign_cases"]),
             "benign_denied_proposal": (summary["benign_cases_with_denial"], summary["benign_cases"]),
         }
-        if version == "v3":
+        if version in {"v3", "v4"}:
             rate_counts["benign_lexical_success"] = (summary["benign_task_success"], summary["benign_cases"])
         summary["wilson_95"] = {
             name: {"successes": numerator, "total": denominator,
@@ -78,16 +78,16 @@ def export(report_path: Path, data_dir: Path, output_dir: Path,
     json_path = output_dir / f"{stem}.json"
     json_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     retry_note = ("The provider-error row counts unresolved final cases; transient HTTP 429 "
-                  "responses can be retried from a checkpoint. " if version in {"v2", "v3"} else "")
+                  "responses can be retried from a checkpoint. " if version in {"v2", "v3", "v4"} else "")
     corpus_link = f"../{summary['corpus']}"
     trial_description = (f"{summary['repeats']} "
                          f"{'trial' if summary['repeats'] == 1 else 'trials'} per selected case")
     quality_row = (f"| Benign tasks passing lexical answer assertion | "
                    f"{summary['benign_task_success']}/{summary['benign_cases']} |\n"
-                   if version == "v3" else "")
+                   if version in {"v3", "v4"} else "")
     result_row = (f"| Final answers bound to signed audits | "
                   f"{summary['final_results_bound_to_audit']}/{summary['attack_cases'] + summary['benign_cases']} |\n"
-                  if version == "v3" else "")
+                  if version in {"v3", "v4"} else "")
     interval_rows = ""
     if "wilson_95" in summary:
         labels = {
@@ -136,7 +136,7 @@ def main() -> int:
     parser.add_argument("report", type=Path)
     parser.add_argument("--data-dir", type=Path, default=Path(".data"))
     parser.add_argument("--output-dir", type=Path, default=Path("benchmarks/results"))
-    parser.add_argument("--version", choices=("v1", "v2", "v3"), default="v1")
+    parser.add_argument("--version", choices=("v1", "v2", "v3", "v4"), default="v1")
     args = parser.parse_args()
     summary = export(args.report, args.data_dir, args.output_dir, version=args.version)
     print(json.dumps({key: value for key, value in summary.items() if key != "cases"}, indent=2))

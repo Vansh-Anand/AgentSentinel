@@ -97,7 +97,7 @@ describe('PipelinePage Tests', () => {
     });
 
     expect(screen.queryByText('Executing...')).not.toBeInTheDocument();
-    expect(screen.getByText('Live Pipeline Execution')).toBeInTheDocument();
+    expect(screen.getByText('Pipeline Scenario Replay')).toBeInTheDocument();
     
     act(() => {
       vi.advanceTimersByTime(6000);
@@ -108,7 +108,7 @@ describe('PipelinePage Tests', () => {
     // Check final verdict panel
     expect(screen.getByText('SECURITY DECISION')).toBeInTheDocument();
     expect(screen.getAllByText('ALLOW').length).toBeGreaterThan(0);
-    expect(screen.getByText('No malicious intent or policy violations detected across the pipeline.')).toBeInTheDocument();
+    expect(screen.getByText('This research scenario reached its allow result; the simulated layers do not establish live safety.')).toBeInTheDocument();
   });
   
   it('handles blocked result and sets remaining layers to skipped', async () => {
@@ -143,7 +143,7 @@ describe('PipelinePage Tests', () => {
       await promise;
     });
 
-    expect(screen.getByText('Live Pipeline Execution')).toBeInTheDocument();
+    expect(screen.getByText('Pipeline Scenario Replay')).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(3000);
@@ -154,6 +154,6 @@ describe('PipelinePage Tests', () => {
     // Check final verdict panel
     expect(screen.getByText('SECURITY DECISION')).toBeInTheDocument();
     expect(screen.getAllByText('BLOCK').length).toBeGreaterThan(0);
-    expect(screen.getByText('Obfuscated command normalized and rejected by semantic policy.')).toBeInTheDocument();
+    expect(screen.getByText('Research scenario: the simulated orchestrator rejected this command at L2.')).toBeInTheDocument();
   });
 });

@@ -186,7 +186,7 @@ class PipelineService:
             evidence_chain_reference=f"chain-{orchestrator.session_id}",
             chain_status="TAMPERED" if stopping_layer == "L6" else "APPENDED",
             storage_backend="SQLite",
-            execution_mode=ExecutionMode.REAL_RUNTIME
+            execution_mode=ExecutionMode.SIMULATED
         ) if l6_decision else None
 
         # L7 Outcome
@@ -201,7 +201,9 @@ class PipelineService:
         ) if l7_decision else None
 
         overall = "ALLOW"
-        if stopping_layer == "L5":
+        if stopping_layer == "L7":
+            overall = "UNAVAILABLE"
+        elif stopping_layer == "L5":
             overall = "FREEZE"
         elif stopping_layer != "ALLOW":
             overall = "BLOCK"
@@ -231,7 +233,7 @@ class PipelineService:
             layer="PIPELINE",
             overall_decision=overall,
             stopping_layer=stopping_layer,
-            execution_mode="REAL_RUNTIME" if stopping_layer in ["L1", "L2"] else "SIMULATED",
+            execution_mode="SIMULATED",
             l6_executed=l6_decision is not None,
             scenario_id=scenario_id,
             pipeline_response=pipeline_res.model_dump()

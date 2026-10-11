@@ -92,11 +92,11 @@ export const usePipelineExecution = () => {
           if (!outcome || !outcome.decision) finalState = 'UNAVAILABLE';
           else finalState = outcome.decision;
         } else if (layerKey === 'L3' || layerKey === 'L4') {
-            finalState = outcome ? 'ALLOW' : 'UNAVAILABLE';
+            finalState = outcome ? (pendingResult.stopping_layer === layerKey && pendingResult.overall_decision === 'BLOCK' ? 'BLOCK' : 'ALLOW') : 'UNAVAILABLE';
         } else if (layerKey === 'L5') {
             finalState = outcome?.governance_state || 'UNAVAILABLE';
         } else if (layerKey === 'L6') {
-            finalState = outcome?.chain_status === 'APPENDED' ? 'ALLOW' : 'UNAVAILABLE';
+            finalState = outcome?.chain_status === 'TAMPERED' ? 'BLOCK' : outcome?.chain_status === 'APPENDED' ? 'ALLOW' : 'UNAVAILABLE';
         } else if (layerKey === 'L7') {
             finalState = outcome?.isolation_status === 'UNAVAILABLE' ? 'UNAVAILABLE' : 'ALLOW';
         }

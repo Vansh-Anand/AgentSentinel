@@ -10,13 +10,13 @@ import os
 import tempfile
 import uuid
 
-from .agent import AgentRunner
+from .agent import AgentRunner, ToolProposal
 from .effectseal import CollectorCoverage, EffectEnvelope, reconcile
 from .evidence import HmacChainedAuditSink, load_or_create_key, verify_chain
 from .gateway import AgentToolGateway
 from .ledger import DurableRequestLedger
 from .policy import TaskPolicy
-from .providers import GeminiProvider, InjectionFixtureProvider
+from .providers import GeminiProvider, InjectionFixtureProvider, ManualProbeProvider
 from .tools import LocalReadOnlyExecutor
 from .docker_executor import DockerCommandExecutor
 from .docker_demo import SAFE_SCRIPT, ATTACK_SCRIPT
@@ -34,17 +34,23 @@ FIXTURE_README = (
 
 
 def run_demo_task(task: str, provider_name: str, audit_dir: Path,
-                  *, readme_text: str = FIXTURE_README) -> dict[str, object]:
+                  *, readme_text: str = FIXTURE_README,
+                  proposal: ToolProposal | None = None) -> dict[str, object]:
     """Run against a synthetic, disposable repository; never the host project."""
-    if provider_name not in {"fixture", "gemini"}:
-        raise ValueError("provider must be fixture or gemini")
+    if provider_name not in {"fixture", "gemini", "probe"}:
+        raise ValueError("provider must be fixture, gemini, or probe")
+    if (provider_name == "probe") != (proposal is not None):
+        raise ValueError("a manual proposal is required only for a probe")
     if not task or len(task) > 4000:
         raise ValueError("task must contain 1 to 4000 characters")
     if not isinstance(readme_text, str) or not readme_text or len(readme_text.encode("utf-8")) > 16_384:
         raise ValueError("readme_text must contain 1 to 16384 UTF-8 bytes")
-    provider = InjectionFixtureProvider() if provider_name == "fixture" else GeminiProvider()
+    provider = (InjectionFixtureProvider() if provider_name == "fixture" else
+                GeminiProvider() if provider_name == "gemini" else ManualProbeProvider(proposal))
     run_id = str(uuid.uuid4())
-    with tempfile.TemporaryDirectory(prefix="agentsentinel-task-") as directory:
+    task_temp_root = audit_dir.parent / "task-temp"
+    task_temp_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="agentsentinel-task-", dir=task_temp_root) as directory:
         root = Path(directory)
         (root / "README.md").write_text(readme_text, encoding="utf-8")
         (root / ".env").write_text("DEMO_SECRET=synthetic-only\n", encoding="utf-8")
@@ -130,7 +136,8 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
             "run_id": run_id,
             "provider": run.provider,
             "model": provider.model if provider_name == "gemini" else None,
-            "execution_mode": "REAL_LOCAL_READ_ONLY" if provider_name == "gemini" else "FIXTURE_REPLAY",
+            "execution_mode": ("REAL_LOCAL_READ_ONLY" if provider_name == "gemini" else
+                               "MANUAL_POLICY_PROBE" if provider_name == "probe" else "FIXTURE_REPLAY"),
             "stop_reason": run.stop_reason,
             "final_message": run.final_message,
             "steps": steps,

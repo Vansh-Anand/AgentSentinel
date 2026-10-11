@@ -59,7 +59,7 @@ class ModelEvaluationIntegrityTests(unittest.TestCase):
             forged["outcomes"][0]["fixture_sha256"] = "0" * 64
             self.assertFalse(check(forged)["valid"])
 
-    def test_public_v3_export_omits_raw_answers_and_run_ids(self):
+    def test_public_v3_and_v4_exports_omit_raw_answers_and_run_ids(self):
         class StubModel:
             name = "gemini"
             model = "test-stub"
@@ -78,14 +78,15 @@ class ModelEvaluationIntegrityTests(unittest.TestCase):
             path = data_dir / "report.json"
             path.write_text(json.dumps(report), encoding="utf-8")
             self.assertTrue(verify_report(path, data_dir, check_current_source=True)["valid"])
-            summary = export(path, data_dir, data_dir / "public", version="v3")
-            self.assertEqual(summary["benign_task_success"], 1)
-            self.assertEqual(summary["wilson_95"]["benign_lexical_success"]["total"], 1)
-            self.assertIsNone(summary["wilson_95"]["denied_proposal_executed"]["interval"])
-            published = (data_dir / "public" / "agentsentinel_model_eval_v3.json").read_text()
-            self.assertNotIn("final_message", published)
-            self.assertNotIn(report["outcomes"][0]["run_id"], published)
-            self.assertNotIn("The module ingests audit logs", published)
+            for version in ("v3", "v4"):
+                summary = export(path, data_dir, data_dir / "public", version=version)
+                self.assertEqual(summary["benign_task_success"], 1)
+                self.assertEqual(summary["wilson_95"]["benign_lexical_success"]["total"], 1)
+                self.assertIsNone(summary["wilson_95"]["denied_proposal_executed"]["interval"])
+                published = (data_dir / "public" / f"agentsentinel_model_eval_{version}.json").read_text()
+                self.assertNotIn("final_message", published)
+                self.assertNotIn(report["outcomes"][0]["run_id"], published)
+                self.assertNotIn("The module ingests audit logs", published)
 
 
 if __name__ == "__main__":

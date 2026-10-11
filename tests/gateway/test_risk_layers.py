@@ -38,7 +38,7 @@ class RiskLayerTests(unittest.TestCase):
         self.assertEqual(report[6]["mode"], "SOFTWARE_MEASUREMENT")
         self.assertIs(report[6]["evidence"]["hardware_attested"], False)
         self.assertEqual(len(report[6]["evidence"]["digest_sha256"]), 64)
-        self.assertEqual(report[6]["evidence"]["file_count"], 24)
+        self.assertEqual(report[6]["evidence"]["file_count"], 25)
         self.assertFalse(report[6]["evidence"]["model_active"])
         self.assertEqual(len(report[6]["evidence"]["inactive_research_artifacts"]), 2)
         self.assertTrue(matches_current_source(report[6]["evidence"]))
