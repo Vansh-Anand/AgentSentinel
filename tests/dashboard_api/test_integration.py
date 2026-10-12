@@ -14,7 +14,7 @@ def test_pipeline_to_eces_integration():
     1. Run a pipeline scenario (which should trigger ECES recording).
     2. Retrieve the session from the ECES evidence list.
     3. Retrieve the full chain details.
-    4. Verify the cryptographic chain.
+    4. Verify the hash chain and report unavailable signing keys.
     """
     
     # Step 1: Run pipeline scenario
@@ -50,13 +50,15 @@ def test_pipeline_to_eces_integration():
     assert chain_data["session_id"] == session_id
     assert len(chain_data["chain"]) > 0
     
-    # Step 4: Verify the cryptographic chain via API
+    # Step 4: Check the global hash chain via API. Replay signatures lack a retained public key.
     verify_resp = client.post(f"/api/evidence/session/{session_id}/verify")
     assert verify_resp.status_code == 200
     verify_data = verify_resp.json()
     
     assert verify_data["session_id"] == session_id
-    assert verify_data["valid"] is True
+    assert verify_data["valid"] is False
+    assert verify_data["hash_chain_valid"] is True
+    assert verify_data["signature_status"] == "UNVERIFIED_KEY_UNAVAILABLE"
     assert verify_data["records_checked"] >= len(chain_data["chain"])
 
 def test_pipeline_attack_integration():
@@ -78,4 +80,5 @@ def test_pipeline_attack_integration():
     session_id = pipeline_result["session_id"]
     verify_resp = client.post(f"/api/evidence/session/{session_id}/verify")
     assert verify_resp.status_code == 200
-    assert verify_resp.json()["valid"] is True
+    assert verify_resp.json()["hash_chain_valid"] is True
+    assert verify_resp.json()["valid"] is False

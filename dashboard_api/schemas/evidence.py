@@ -29,6 +29,8 @@ class SessionDetailResponse(BaseModel):
 class VerifyResponse(BaseModel):
     session_id: str
     valid: bool
+    hash_chain_valid: bool = False
+    signature_status: str = "NOT_CHECKED"
     records_checked: int
     failure: Optional[str] = None
     execution_mode: ExecutionMode

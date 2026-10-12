@@ -80,7 +80,7 @@ export const PipelineStatistics: React.FC<PipelineStatisticsProps> = ({ stats })
             to="/evidence" 
             className="ml-3 text-blue-400 hover:text-blue-300 hover:underline transition-colors text-xs font-semibold flex items-center"
           >
-            View cryptographic audit &rarr;
+            View replay evidence &rarr;
           </Link>
         </div>
       </div>

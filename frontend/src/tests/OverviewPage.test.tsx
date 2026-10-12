@@ -75,10 +75,10 @@ describe('OverviewPage Tests', () => {
     expect(ecesCard).not.toHaveTextContent('REAL RUNTIME');
   });
 
-  it('displays REAL RUNTIME badge when sessions are present', () => {
+  it('displays the session execution mode when sessions are present', () => {
     vi.mocked(useEvidence).mockReturnValue({
       sessions: [
-        { session_id: 's1', event_count: 1, start_time_ns: 123, execution_mode: ExecutionMode.REAL_RUNTIME }
+        { session_id: 's1', event_count: 1, start_time_ns: 123, execution_mode: ExecutionMode.SIMULATED }
       ],
       sessionsLoading: false,
       sessionsError: null
@@ -90,9 +90,9 @@ describe('OverviewPage Tests', () => {
       </MemoryRouter>
     );
 
-    // Should display REAL RUNTIME inside the ECES Evidence card
+    // The card reflects the session mode, not just the database availability.
     const ecesCard = screen.getByText('ECES Evidence').parentElement?.parentElement;
     expect(ecesCard).toHaveTextContent('1');
-    expect(ecesCard).toHaveTextContent('REAL RUNTIME');
+    expect(ecesCard).toHaveTextContent('SIMULATED');
   });
 });

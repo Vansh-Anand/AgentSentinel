@@ -4,10 +4,10 @@ import { ChevronRight, Download } from 'lucide-react';
 
 interface EvidenceTimelineProps {
   chain: ChainRecord[];
-  isVerified?: boolean;
+  isHashChainValid?: boolean;
 }
 
-export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({ chain, isVerified }) => {
+export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({ chain, isHashChainValid }) => {
   const [selectedRecordIndex, setSelectedRecordIndex] = useState<number | null>(0);
 
   if (chain.length === 0) {
@@ -99,8 +99,8 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({ chain, isVer
 
               {index < chain.length - 1 && (
                 <div className="flex justify-center py-2 h-10 relative">
-                  <div className={`w-0.5 h-full ${isVerified === false ? 'bg-red-400' : 'bg-gray-300'}`}></div>
-                  {isVerified === false && index === selectedRecordIndex && (
+                  <div className={`w-0.5 h-full ${isHashChainValid === false ? 'bg-red-400' : 'bg-gray-300'}`}></div>
+                  {isHashChainValid === false && index === selectedRecordIndex && (
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded shadow whitespace-nowrap">
                       INTEGRITY FAILURE
                     </div>

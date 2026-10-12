@@ -18,13 +18,13 @@ class VerificationResult(BaseModel):
 class EvidenceVerifier:
     """Offline and online evidence chain verifier."""
     
-    def __init__(self, signer: HardwareSigner):
+    def __init__(self, signer: Optional[HardwareSigner]):
         # We need the signer to verify signatures (it acts as a public key provider here).
         # In a real offline tool, this would be a public key registry.
         self.signer = signer
         self.hasher = HashProvider() # Detects BLAKE3 or SHA-256
         
-    def verify_chain(self, records: List[Dict[str, Any]]) -> VerificationResult:
+    def verify_chain(self, records: List[Dict[str, Any]], verify_signatures: bool = True) -> VerificationResult:
         """
         Verifies a list of records (genesis + evidence) for integrity.
         records must be ordered by sequence.
@@ -143,9 +143,17 @@ class EvidenceVerifier:
                 
             # 5. Signature check
             sig = data.get("signature")
-            if sig:
+            if verify_signatures and not sig:
+                return VerificationResult(
+                    valid=False, records_checked=i+1,
+                    first_failure_sequence=expected_seq,
+                    failure_event_id=event_id,
+                    failure_type="SIGNATURE_MISSING",
+                    signature_status="FAIL", schema_status="PASS"
+                )
+            if verify_signatures and sig:
                 # Signer verifies event_hash
-                if not self.signer.verify(expected_event_hash.encode('utf-8'), sig):
+                if self.signer is None or not self.signer.verify(expected_event_hash.encode('utf-8'), sig):
                     return VerificationResult(
                         valid=False, records_checked=i+1,
                         first_failure_sequence=expected_seq,
@@ -161,6 +169,6 @@ class EvidenceVerifier:
             valid=True,
             records_checked=len(records),
             head_hash=expected_previous,
-            signature_status="PASS",
+            signature_status="PASS" if verify_signatures else "NOT_CHECKED",
             schema_status="PASS"
         )

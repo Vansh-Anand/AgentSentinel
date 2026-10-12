@@ -188,6 +188,8 @@ export interface SessionDetailResponse {
 export interface VerifyResponse {
   session_id: string;
   valid: boolean;
+  hash_chain_valid?: boolean;
+  signature_status?: string;
   records_checked: number;
   failure?: string;
   execution_mode: ExecutionMode;

@@ -177,7 +177,7 @@ export const PipelinePage: React.FC = () => {
                   <span className="text-3xl text-white font-black">{stats.ecesCount}</span>
                   <span className="text-gray-500 text-xs mt-1">evidence records</span>
                   <Link to="/evidence" className="mt-4 text-blue-400 hover:text-blue-300 text-sm font-semibold transition-colors flex items-center">
-                    View cryptographic audit &rarr;
+                    View replay evidence &rarr;
                   </Link>
                 </div>
               </div>

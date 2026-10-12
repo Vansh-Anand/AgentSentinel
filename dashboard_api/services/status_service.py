@@ -84,9 +84,9 @@ class StatusService:
                 name="Grammar-Constrained Decoding",
                 operational_status="OPERATIONAL",
                 execution_mode=ExecutionMode.REAL_RUNTIME,
-                description="Enforces strict schema compliance before LLM execution.",
+                description="Checks proposal grammar after generation in the research route; the Gateway separately uses model structured output and pre-execution policy.",
                 capabilities=["GCD", "Pushdown Automaton", "YAML policy compilation", "Policy hot reload"],
-                limitations=["Only supports constrained prompt patterns."]
+                limitations=["The research route does not constrain token generation."]
             ),
             LayerSystemStatus(
                 layer_id="L2",
@@ -131,7 +131,7 @@ class StatusService:
                 execution_mode=ExecutionMode.REAL_RUNTIME if eces_ok else ExecutionMode.UNAVAILABLE,
                 description="Stores the research pipeline's evidence in SQLite; separate from gateway signed audit.",
                 capabilities=["ECES hash chain", "SQLite durable evidence store", "Chain verification utility"],
-                limitations=["Single-node deployment without an independent external anchor."] if eces_ok else
+                limitations=["Research signing public keys were not retained, so replay signatures cannot be verified; only the global hash chain is checked. No independent external anchor."] if eces_ok else
                             ["No readable research ECES SQLite database is present in this deployment."]
             ),
             LayerSystemStatus(

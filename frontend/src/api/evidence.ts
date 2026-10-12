@@ -6,16 +6,16 @@ import type {
 } from '../types/api';
 
 export const getEvidenceSessions = async (): Promise<SessionListResponse> => {
-  const response = await api.get('/evidence/sessions');
+  const response = await api.get('/api/evidence/sessions');
   return response.data;
 };
 
 export const getSessionChain = async (sessionId: string): Promise<SessionDetailResponse> => {
-  const response = await api.get(`/evidence/session/${sessionId}`);
+  const response = await api.get(`/api/evidence/session/${sessionId}`);
   return response.data;
 };
 
 export const verifySession = async (sessionId: string): Promise<VerifyResponse> => {
-  const response = await api.post(`/evidence/session/${sessionId}/verify`);
+  const response = await api.post(`/api/evidence/session/${sessionId}/verify`);
   return response.data;
 };

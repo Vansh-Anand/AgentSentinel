@@ -51,7 +51,7 @@ export const EvidencePage: React.FC = () => {
             <Database className="w-6 h-6 mr-2 text-blue-600" />
             ECES Evidence Chain Inspector
           </h2>
-          <p className="mt-2 text-gray-600">Inspect and cryptographically verify the append-only evidence chain.</p>
+          <p className="mt-2 text-gray-600">Inspect the research replay evidence chain and its verification limits.</p>
         </div>
         <button 
           onClick={evidence.refreshSessions}
@@ -83,7 +83,7 @@ export const EvidencePage: React.FC = () => {
               Security Note
             </div>
             <p>
-              The frontend does not perform cryptographic verification itself. Verification remains safely delegated to the backend ECES verification implementation.
+              The backend checks the global research replay hash chain. Replay signing keys were not retained, so these signatures cannot be independently verified. Live Gateway runs provide separately verified HMAC audit chains and Ed25519 receipts.
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export const EvidencePage: React.FC = () => {
               {!evidence.detailError && evidence.sessionDetail && (
                 <EvidenceTimeline 
                   chain={evidence.sessionDetail.chain} 
-                  isVerified={evidence.verifyResult ? evidence.verifyResult.valid : undefined}
+                  isHashChainValid={evidence.verifyResult ? (evidence.verifyResult.hash_chain_valid ?? evidence.verifyResult.valid) : undefined}
                 />
               )}
               

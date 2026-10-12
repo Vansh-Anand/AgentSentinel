@@ -6,8 +6,6 @@ from typing import List, Optional
 from dashboard_api.schemas.evidence import SessionListItem, SessionListResponse, ChainRecord, SessionDetailResponse, VerifyResponse
 from dashboard_api.schemas.common import ExecutionMode
 from l6_eces.storage.sqlite_store import SQLiteEvidenceStore, DEFAULT_DB_PATH
-from l6_eces.crypto.hasher import HashProvider
-from l6_eces.crypto.signer import SoftwareSigner
 from l6_eces.forensics.verifier import EvidenceVerifier
 
 class EvidenceService:
@@ -42,7 +40,7 @@ class EvidenceService:
                     session_id=row[0],
                     event_count=row[1],
                     start_time_ns=row[2],
-                    execution_mode=ExecutionMode.REAL_RUNTIME
+                    execution_mode=ExecutionMode.SIMULATED
                 ))
         finally:
             conn.close()
@@ -81,40 +79,25 @@ class EvidenceService:
         finally:
             conn.close()
                 
-        return SessionDetailResponse(session_id=session_id, execution_mode=ExecutionMode.REAL_RUNTIME, chain=chain)
+        return SessionDetailResponse(session_id=session_id, execution_mode=ExecutionMode.SIMULATED, chain=chain)
 
     def verify_session(self, session_id: str) -> VerifyResponse:
         if not os.path.exists(self.db_path):
-            return VerifyResponse(session_id=session_id, valid=False, records_checked=0, failure="DB_NOT_FOUND", execution_mode=ExecutionMode.REAL_RUNTIME)
+            return VerifyResponse(session_id=session_id, valid=False, records_checked=0, failure="DB_NOT_FOUND", execution_mode=ExecutionMode.SIMULATED)
             
-        # We need to extract just the chain for this session
-        # However, the verifier in AcademIQ usually verifies the *entire* chain.
-        # If the verifier can accept a partial chain, we'll pass that, or we verify the whole thing and just say it's valid.
-        # Looking at EvidenceVerifier, it checks that sequence_number increments and previous_hash matches.
-        # A session might be interleaved in the database.
-        
         store = SQLiteEvidenceStore(self.db_path)
         records = store.read_all()
-        
-        # We verify the entire chain because ECES guarantees the global chain.
-        # But we could filter to just return whether the overall chain is valid.
-        
-        signer = SoftwareSigner()
-        signer.generate_key() # Verifier doesn't actually need the private key to check hashes
-        
-        # In this simulation environment, the orchestrator generates a random key for each session.
-        # To allow the dashboard to demonstrate successful verification without an external PKI, 
-        # we mock the signature verification to always succeed for SoftwareSigner.
-        signer.verify = lambda *args, **kwargs: True
-        
-        verifier = EvidenceVerifier(signer)
-        
-        result = verifier.verify_chain(records)
-        
+        # The research replay uses ephemeral per-run signing keys without a retained
+        # public-key registry. Verify the global hash chain, but do not claim that
+        # signatures can be authenticated. Gateway receipts have separate real checks.
+        result = EvidenceVerifier(None).verify_chain(records, verify_signatures=False)
+        hash_chain_valid = result.valid
         return VerifyResponse(
             session_id=session_id,
-            valid=result.valid,
+            valid=False,
+            hash_chain_valid=hash_chain_valid,
+            signature_status="UNVERIFIED_KEY_UNAVAILABLE" if hash_chain_valid else "NOT_CHECKED",
             records_checked=result.records_checked,
-            failure=result.failure_type,
-            execution_mode=ExecutionMode.REAL_RUNTIME
+            failure="SIGNATURE_KEY_UNAVAILABLE" if hash_chain_valid else result.failure_type,
+            execution_mode=ExecutionMode.SIMULATED
         )

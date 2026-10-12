@@ -59,7 +59,7 @@ export const OverviewPage: React.FC = () => {
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Security Pipeline</h3>
           </div>
           <div className="flex-grow">
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Active Layers</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Available or demo layers</p>
             <div className="text-3xl font-bold text-slate-900 dark:text-white">
               {status.layers.filter(l => l.operational_status !== 'UNAVAILABLE').length} <span className="text-lg text-slate-500 font-normal">/ 7</span>
             </div>
@@ -84,12 +84,12 @@ export const OverviewPage: React.FC = () => {
               {sessions.length === 0 ? (
                 <span className="text-sm text-slate-500 italic">Run a scenario to populate</span>
               ) : (
-                <ExecutionModeBadge mode={status.database_status === 'OPERATIONAL' ? 'REAL_RUNTIME' : 'UNAVAILABLE'} />
+                <ExecutionModeBadge mode={sessions[0].execution_mode} />
               )}
             </div>
           </div>
           <Link to="/evidence" className="mt-4 flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
-            Inspect Audit Chains <ArrowRight className="w-4 h-4 ml-1" />
+            Inspect Replay Evidence <ArrowRight className="w-4 h-4 ml-1" />
           </Link>
         </div>
 

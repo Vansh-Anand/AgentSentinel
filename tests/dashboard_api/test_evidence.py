@@ -66,9 +66,6 @@ def setup_mock_db(tmp_path, monkeypatch):
     from dashboard_api.routers.evidence import service as evidence_service
     monkeypatch.setattr(evidence_service, "_db_path", db_path)
     
-    # Mock verify to bypass the random key problem
-    monkeypatch.setattr(SoftwareSigner, "verify", lambda self, data, sig: True)
-    
     yield db_path
 
 def test_list_sessions():
@@ -97,7 +94,10 @@ def test_verify_session_valid():
     response = client.post("/api/evidence/session/session_A/verify")
     assert response.status_code == 200
     data = response.json()
-    assert data["valid"] is True
+    assert data["valid"] is False
+    assert data["hash_chain_valid"] is True
+    assert data["signature_status"] == "UNVERIFIED_KEY_UNAVAILABLE"
+    assert data["failure"] == "SIGNATURE_KEY_UNAVAILABLE"
     # Genesis + 3 events = 4 records checked overall by the verifier
     assert data["records_checked"] == 4
     
@@ -119,4 +119,5 @@ def test_verify_session_tampered(setup_mock_db):
     assert response.status_code == 200
     data = response.json()
     assert data["valid"] is False
+    assert data["hash_chain_valid"] is False
     assert data["failure"] == "PAYLOAD_HASH_MISMATCH"

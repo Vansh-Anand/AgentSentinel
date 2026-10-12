@@ -166,4 +166,28 @@ describe('EvidencePage Tests', () => {
       expect(screen.getByText(/Records Checked: 5/)).toBeInTheDocument();
     });
   });
+
+  it('reports intact hash links without claiming unverified signatures are valid', async () => {
+    vi.mocked(evidenceApi.getEvidenceSessions).mockResolvedValue({
+      sessions: [{ session_id: 'replay-1', event_count: 1, start_time_ns: 1000000000000, execution_mode: ExecutionMode.SIMULATED }]
+    });
+    vi.mocked(evidenceApi.getSessionChain).mockResolvedValue({
+      session_id: 'replay-1', execution_mode: ExecutionMode.SIMULATED, chain: []
+    });
+    vi.mocked(evidenceApi.verifySession).mockResolvedValue({
+      session_id: 'replay-1', valid: false, hash_chain_valid: true,
+      signature_status: 'UNVERIFIED_KEY_UNAVAILABLE', records_checked: 5,
+      failure: 'SIGNATURE_KEY_UNAVAILABLE', execution_mode: ExecutionMode.SIMULATED
+    });
+
+    render(<EvidencePage />);
+    await waitFor(() => screen.getByText('replay-1'));
+    fireEvent.click(screen.getByText('replay-1'));
+    fireEvent.click(screen.getByText('Verify Chain'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Hash chain intact; signatures unverified')).toBeInTheDocument();
+      expect(screen.queryByText('Chain Integrity Failure')).not.toBeInTheDocument();
+    });
+  });
 });
