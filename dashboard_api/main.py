@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from .routers import health, experiments, pipeline, evidence, status, agent, runtime
+from .routers import health, experiments, pipeline, evidence, status, agent, runtime, secure_lab
 
 app = FastAPI(
     title="AgentSentinel Dashboard API",
@@ -27,6 +27,7 @@ app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
 app.include_router(evidence.router, prefix="/api/evidence", tags=["evidence"])
 app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 app.include_router(runtime.router, prefix="/api/runtime", tags=["runtime"])
+app.include_router(secure_lab.router, prefix="/api/lab", tags=["portable-security-lab"])
 
 @app.get("/")
 def read_root():

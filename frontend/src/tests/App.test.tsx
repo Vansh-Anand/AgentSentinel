@@ -28,7 +28,8 @@ describe('App Foundation Tests', () => {
   it('renders application shell navigation', () => {
     render(<App />);
     expect(screen.getByText('AgentSentinel')).toBeInTheDocument();
-    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Security Pipeline').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Playground').length).toBeGreaterThan(0);
+    expect(screen.getByText('Evaluation')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /See the action/ })).toBeInTheDocument();
   });
 });

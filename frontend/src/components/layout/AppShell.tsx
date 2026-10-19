@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { checkHealth } from '../../api/client';
-import { Activity, Shield, Database, Beaker, Server, CheckCircle2, AlertTriangle, Cpu, Bot } from 'lucide-react';
-import { ExecutionModeBadge } from '../common/ExecutionModeBadge';
-import { ExecutionMode } from '../../types/api';
+import { Shield, Database, FlaskConical, Server, CheckCircle2, AlertTriangle, Cpu, LayoutDashboard } from 'lucide-react';
 
 const navigation = [
-  { name: 'Overview', href: '/', icon: Activity },
-  { name: 'Research Agent Demo', href: '/agent', icon: Bot },
-  { name: 'AgentSentinel Gateway', href: '/gateway', icon: Shield },
-  { name: 'Security Pipeline', href: '/pipeline', icon: Shield },
-  { name: 'ECES Evidence', href: '/evidence', icon: Database },
-  { name: 'Experiments', href: '/experiments', icon: Beaker },
-  { name: 'System Status', href: '/system', icon: Server },
+  { name: 'Overview', href: '/overview', icon: LayoutDashboard },
+  { name: 'Playground', href: '/lab', icon: Shield },
+  { name: 'Runs', href: '/evidence', icon: Database },
+  { name: 'Evaluation', href: '/experiments', icon: FlaskConical },
 ];
 
 export const AppShell: React.FC = () => {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'unavailable'>('checking');
   const location = useLocation();
+  const playground = location.pathname === '/' || location.pathname.startsWith('/overview') ||
+    location.pathname === '/lab' || location.pathname.startsWith('/playground/') ||
+    location.pathname.startsWith('/runs/') || location.pathname === '/evidence';
 
   useEffect(() => {
     const verifyConnection = async () => {
@@ -36,28 +34,31 @@ export const AppShell: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 overflow-hidden lg:flex-row">
+    <div className={`flex h-screen flex-col bg-gray-50 overflow-hidden lg:flex-row ${playground ? 'sentinel-shell' : ''}`}>
       {/* Sidebar */}
       <div className="w-full bg-gray-900 text-white flex flex-col flex-shrink-0 lg:w-64">
         <div className="h-12 flex items-center px-4 border-b border-gray-800 lg:h-16 lg:px-6">
           <Cpu className="w-6 h-6 text-blue-500 mr-3" />
           <span className="font-bold text-lg tracking-tight">AgentSentinel</span>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:overflow-y-auto lg:px-4 lg:py-6">
+        <nav className="grid grid-cols-4 gap-1 px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:overflow-y-auto lg:px-4 lg:py-6">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href || 
+            const isActive = (item.href === '/overview' && location.pathname === '/') ||
+                            (item.href === '/lab' && location.pathname.startsWith('/playground/')) ||
+                            (item.href === '/evidence' && location.pathname.startsWith('/runs/')) ||
+                            location.pathname === item.href ||
                             (item.href !== '/' && location.pathname.startsWith(item.href));
             return (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex flex-shrink-0 items-center whitespace-nowrap px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+                className={`flex min-w-0 items-center gap-2 px-2 py-2.5 text-xs font-medium rounded-md transition-colors lg:px-3 lg:text-sm ${
                   isActive
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                 }`}
               >
-                <item.icon className={`w-5 h-5 mr-3 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                <item.icon className={`h-4 w-4 flex-shrink-0 lg:h-5 lg:w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
                 {item.name}
               </Link>
             );
@@ -90,18 +91,11 @@ export const AppShell: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 flex-shrink-0 lg:h-16 lg:px-6">
+        <header className={`h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 flex-shrink-0 lg:h-16 lg:px-6 ${playground ? 'sentinel-topbar' : ''}`}>
           <h1 className="text-lg font-semibold text-gray-800 lg:text-xl">
-            {navigation.find(n => location.pathname === n.href || (n.href !== '/' && location.pathname.startsWith(n.href)))?.name || 'Dashboard'}
+            {location.pathname === '/' ? 'Overview' : location.pathname.startsWith('/system') ? 'System status' : location.pathname.startsWith('/runs/') ? 'Run inspection' : location.pathname.startsWith('/playground/') ? 'Playground' : navigation.find(n => location.pathname === n.href || location.pathname.startsWith(`${n.href}/`))?.name || 'Research'}
           </h1>
-          <div className="hidden items-center space-x-3 text-sm text-gray-500 xl:flex">
-            <span className="font-medium mr-2">Execution Truthfulness Legend:</span>
-            <ExecutionModeBadge mode={ExecutionMode.REAL_RUNTIME} />
-            <ExecutionModeBadge mode={ExecutionMode.SIMULATED} />
-            <ExecutionModeBadge mode={ExecutionMode.BENCHMARK} />
-            <ExecutionModeBadge mode={ExecutionMode.SYNTHETIC} />
-            <ExecutionModeBadge mode={ExecutionMode.UNAVAILABLE} />
-          </div>
+          <Link to="/system" aria-label="System status" className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"><Server size={15} /> <span className="hidden sm:inline">System status</span></Link>
         </header>
 
         {/* Page Content */}

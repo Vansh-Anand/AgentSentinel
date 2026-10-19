@@ -5,3 +5,18 @@ __pycache__/
 .pytest_cache/
 frontend/node_modules/
 frontend/dist/
+# Local demonstrations, generated reports, and legacy research outputs stay on
+# the developer machine. Release evidence is explicitly selected for Git.
+/artifacts/
+/deliverables/
+/scratch/
+/benchmarks/results/academiq_*
+/benchmarks/results/plots/
+/benchmarks/results/statistical_validation.*
+/docs/reports/
+/notebooks/AcademIQ_ML_Model_Training_and_Evaluation.ipynb
+/scripts/*academiq*
+/scripts/append_flowise_attack_screenshots.py
+/scripts/inspect_report_media.py
+/scripts/make_academiq_notebook_captures.py
+/scripts/statistical_validation.py

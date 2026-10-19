@@ -42,6 +42,12 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-test.txt
       - run: python -m unittest discover -s tests/runtime -v
+      - name: Run portable gateway, API, and backend regression tests
+        run: python -m pytest tests/runtime tests/backend -q -p no:cacheprovider
+      - name: Validate approved portable source baseline
+        run: python -c "from agent_runtime.secure_lab import integrity_status; result=integrity_status(); print(result); assert result['valid']"
+      - name: Run portable capability evaluation smoke
+        run: python scripts/evaluate_portable_lab.py --limit 8 --output ci-portable-smoke.json
       - run: python -m pytest tests/dashboard_api -q --basetemp=.data/pytest-run -p no:cacheprovider
       - name: Validate native bridge and fail-closed attestation contracts
         run: python -m pytest tests/integration/test_l3_collector_bridge.py tests/integration/test_l7_trust.py -q -p no:cacheprovider
@@ -62,6 +68,16 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test -- --maxWorkers=2
+
+  windows-l3:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-test.txt
+      - run: python -m unittest tests.runtime.test_windows_l3 -v
 
   compose-config:
     runs-on: ubuntu-latest

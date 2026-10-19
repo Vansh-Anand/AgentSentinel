@@ -1,15 +1,17 @@
-# Final Project Status (AcademIQ Phase 8)
+# AgentSentinel current project status
 
-| COMPONENT | STATUS | IMPLEMENTATION | TESTING | LIMITATIONS |
-|-----------|--------|----------------|---------|-------------|
-| **L1 (GCD)** | DONE | IMPLEMENTED | TESTED | None |
-| **L2 (SDN)** | DONE | IMPLEMENTED | TESTED | Windows limits symlink race handling natively. |
-| **L3 (eBPF)** | DONE | IMPLEMENTED | SIMULATION TESTED | Native Linux required for bpf maps execution. |
-| **L4 (Div)** | DONE | IMPLEMENTED | SYNTHETIC EVAL | Needs live production datasets for tuning. |
-| **L5 (Risk)** | DONE | IMPLEMENTED | TESTED | Governance fuzzing rules are heuristic. |
-| **ECES** | DONE | IMPLEMENTED | SOFTWARE CRYPTO TESTED | Hardware signing stubbed on Windows. |
-| **TPM** | DONE | STUBBED | HARDWARE PENDING | C++ CryptoAPI bindings not compiled. |
-| **TEE** | DONE | SCAFFOLDED | HARDWARE PENDING | Native TDX/SEV-SNP unavailable on Windows. |
+Updated 19 October 2026. The active product is the [portable security workbench](PORTABLE_RELEASE.md) at `/lab`. Its current test evidence is in [VALIDATION_STATUS.md](VALIDATION_STATUS.md), and the measured fixture and live smoke results are summarized in [PORTABLE_EVALUATION.md](PORTABLE_EVALUATION.md). The Windows ETW broker checkpoint is described in [WINDOWS_L3_IMPLEMENTATION.md](WINDOWS_L3_IMPLEMENTATION.md).
 
-### Conclusion
-AcademIQ has successfully transitioned from architectural design to a completely implemented prototype. Security domains, boundaries, governance algorithms, adversarial defenses, and cryptographic logs are all fully wired into a cohesive orchestration pipeline. 
+| Capability | Delivered and observed | Boundary |
+| --- | --- | --- |
+| Custom agent tasks | Fixture, local Ollama and configured Gemini all use a shared tool gateway. Browser verified a custom Ollama calculation and useful read, search, calculate and report work. | A live model may refuse or ignore an attack. The fixture parser recognizes limited intents and is labeled scripted. |
+| L1 input and schema | Explicit input rule, bounded text and structured proposals. | Rule scope is narrow; no general semantic injection classifier. |
+| L2 authorization | Server-owned profiles, scoped paths and capabilities, output canary check. A `.env` proposal was denied before execution. | Synthetic assets and known canary only; no universal data loss prevention claim. |
+| L3 execution and effects | Bounded app tools run in assigned Windows Job workers. An elevated loopback ETW broker correlated the process start for 25/25 authorized fixture workers and one live Ollama calculation. | A Job Object limits resources and lifetime, not file or network access. ETW covers process lifecycle here, not file/network effects or native eBPF. |
+| L4 behavior | Independent third-identical-proposal rule blocks the next dispatch. | Not a trained behavior model. |
+| L5 governance | Six-call budget, cancellation and exact-request approval; approval resumed a browser run. | In-flight model calls end at provider timeout or safe boundary. |
+| L6 evidence | Durable audit, signed terminal evidence, independent trusted-key verifier, audit-failure refusal. | Host-held signing key and local clock; no external anchor. |
+| L7 integrity | Reviewed software source manifest checked at admission and before tool dispatch. A mutated controlled bundle was rejected. | Disk source hashes do not attest loaded code or TPM hardware. |
+| Portfolio features | Saved runs, resumable events, replay, policy counterfactual with zero execution, evaluation page and adapter action endpoint. | Adapter contract is locally tested; no external Flowise canvas or public multi-user deployment was verified. |
+
+The portable build is ready for a local faculty demonstration. The new [20-case Ollama live report](../benchmarks/results/portable_lab_ollama_live_v3.json) found three forbidden proposals from ten synthetic attack inputs; the gateway stopped all three before execution. Seven of ten benign assertions passed, all 20 signed exports verified, and there were no runtime errors. The other seven attacks did not produce the predeclared forbidden proposal, so they are model behavior rather than gateway interceptions. In the separate [20-case Gemini report](../benchmarks/results/portable_lab_gemini_live_v3.json), no attack produced the predeclared forbidden proposal; all ten benign assertions and 20 signed exports passed. Neither one-trial synthetic corpus establishes a real-world detection rate. Optional Linux eBPF and hardware attestation work requires a suitable host. Older research material remains available from the classic routes and does not change the portable release's proof level.

@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "string",
+      "enum": ["read_file", "search_documents", "calculate", "create_report", "create_ticket", "execute_command", "http_post"],
+      "description": "Proposed AgentSentinel operation. The gateway decides if it may execute."
+    },
+    "arguments": {
+      "type": "string",
+      "description": "JSON object of this tool's arguments. For example: {\"path\":\"incident-log.csv\"}."
+    }
+  },
+  "required": ["tool", "arguments"]
+}

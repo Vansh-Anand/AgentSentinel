@@ -58,13 +58,24 @@ class AgentRunner:
     """Execute bounded proposals, allowing one denied call to be corrected."""
 
     def __init__(self, gateway: AgentToolGateway, provider: AgentProvider, max_tool_calls: int = 4,
-                 effect_observer: Callable[[GatewayResult], EffectReceipt] | None = None):
+                 effect_observer: Callable[[GatewayResult], EffectReceipt] | None = None,
+                 progress: Callable[[str, dict[str, object]], None] | None = None):
         if not 1 <= max_tool_calls <= 20:
             raise ValueError("max_tool_calls must be between 1 and 20")
         self.gateway = gateway
         self.provider = provider
         self.max_tool_calls = max_tool_calls
         self.effect_observer = effect_observer
+        self.progress = progress
+
+    def _emit(self, event: str, data: dict[str, object]) -> None:
+        # UI progress is best effort. Losing a browser connection cannot alter
+        # a policy decision, stop the runner, or suppress signed evidence.
+        if self.progress is not None:
+            try:
+                self.progress(event, data)
+            except Exception:
+                pass
 
     def run(self, *, run_id: str, task: str) -> AgentRun:
         if not run_id or not task or len(task) > 4000:
@@ -73,18 +84,38 @@ class AgentRunner:
         steps: list[RunStep] = []
         governor = RiskGovernor()
         for index in range(self.max_tool_calls + 1):
+            orchestrator_step = self.provider.name == "ollama" and not feedback
+            self._emit("orchestrator_step" if orchestrator_step else "model_request",
+                       {"turn": index + 1})
             turn = self.provider.next_turn(task, tuple(feedback))
+            self._emit("orchestrator_turn" if orchestrator_step else "model_turn", {
+                "turn": index + 1, "message": turn.message[:300],
+                "has_proposal": turn.tool is not None,
+            })
             if turn.tool is None:
                 return AgentRun(run_id, self.provider.name, turn.message, tuple(steps), "FINISHED")
             if index == self.max_tool_calls:
                 return AgentRun(run_id, self.provider.name, "Tool-call limit reached.", tuple(steps), "LIMIT")
             proposal = turn.tool
+            self._emit("tool_proposed", {
+                "turn": index + 1, "request_id": f"{run_id}:{index}",
+                "tool_name": proposal.name,
+                "arguments": dict(proposal.arguments),
+                "source": "orchestrator" if orchestrator_step else self.provider.name,
+            })
             result = self.gateway.handle(
                 run_id=run_id,
                 request_id=f"{run_id}:{index}",
                 tool_name=proposal.name,
                 arguments=proposal.arguments,
             )
+            self._emit("policy_decision", {
+                "request_id": result.request_id,
+                "tool_name": proposal.name,
+                "decision": result.decision,
+                "reason_code": result.reason_code,
+                "executed": result.executed,
+            })
             assessment = governor.observe(result)
             effect = None
             if self.effect_observer is not None:
@@ -94,6 +125,12 @@ class AgentRunner:
                         raise TypeError("observer did not return an EffectReceipt")
                     if result.decision == "ALLOW" or effect.verdict == "VIOLATION":
                         assessment = governor.observe_effect(effect)
+                    self._emit("effect_receipt", {
+                        "request_id": result.request_id,
+                        "verdict": effect.verdict,
+                        "reason_codes": list(effect.reason_codes),
+                        "telemetry_source": effect.telemetry_source,
+                    })
                 except Exception:
                     steps.append(RunStep(proposal, result, assessment))
                     return AgentRun(run_id, self.provider.name,
@@ -116,6 +153,12 @@ class AgentRunner:
                 return AgentRun(run_id, self.provider.name,
                                 "Stopped because risk evidence could not be recorded.",
                                 tuple(steps), "AUDIT_UNAVAILABLE")
+            self._emit("risk_assessment", {
+                "request_id": result.request_id,
+                "action": assessment.action,
+                "score": assessment.score,
+                "signals": list(assessment.signals),
+            })
             feedback.append(ToolFeedback(proposal.name, proposal.arguments, result.decision,
                                          result.reason_code, result.output))
             if assessment.action == "STOP":

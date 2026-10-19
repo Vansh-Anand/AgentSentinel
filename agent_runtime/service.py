@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 import tempfile
 import uuid
+from typing import Callable
 
 from .agent import AgentRunner, ToolProposal
 from .effectseal import CollectorCoverage, EffectEnvelope, reconcile
@@ -16,7 +17,7 @@ from .evidence import HmacChainedAuditSink, load_or_create_key, verify_chain
 from .gateway import AgentToolGateway
 from .ledger import DurableRequestLedger
 from .policy import TaskPolicy
-from .providers import GeminiProvider, InjectionFixtureProvider, ManualProbeProvider
+from .providers import GeminiProvider, InjectionFixtureProvider, ManualProbeProvider, OllamaProvider
 from .tools import LocalReadOnlyExecutor
 from .docker_executor import DockerCommandExecutor
 from .docker_demo import SAFE_SCRIPT, ATTACK_SCRIPT
@@ -35,10 +36,11 @@ FIXTURE_README = (
 
 def run_demo_task(task: str, provider_name: str, audit_dir: Path,
                   *, readme_text: str = FIXTURE_README,
-                  proposal: ToolProposal | None = None) -> dict[str, object]:
+                  proposal: ToolProposal | None = None,
+                  progress: Callable[[str, dict[str, object]], None] | None = None) -> dict[str, object]:
     """Run against a synthetic, disposable repository; never the host project."""
-    if provider_name not in {"fixture", "gemini", "probe"}:
-        raise ValueError("provider must be fixture, gemini, or probe")
+    if provider_name not in {"fixture", "gemini", "ollama", "probe"}:
+        raise ValueError("provider must be fixture, gemini, ollama, or probe")
     if (provider_name == "probe") != (proposal is not None):
         raise ValueError("a manual proposal is required only for a probe")
     if not task or len(task) > 4000:
@@ -46,7 +48,8 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
     if not isinstance(readme_text, str) or not readme_text or len(readme_text.encode("utf-8")) > 16_384:
         raise ValueError("readme_text must contain 1 to 16384 UTF-8 bytes")
     provider = (InjectionFixtureProvider() if provider_name == "fixture" else
-                GeminiProvider() if provider_name == "gemini" else ManualProbeProvider(proposal))
+                GeminiProvider() if provider_name == "gemini" else
+                OllamaProvider() if provider_name == "ollama" else ManualProbeProvider(proposal))
     run_id = str(uuid.uuid4())
     task_temp_root = audit_dir.parent / "task-temp"
     task_temp_root.mkdir(parents=True, exist_ok=True)
@@ -61,6 +64,15 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
         audit = HmacChainedAuditSink(log_path, anchor_path, key)
         gateway = AgentToolGateway(policy, LocalReadOnlyExecutor(), audit,
                                    DurableRequestLedger(audit_dir.parent / "runtime-ledger.sqlite"))
+        if progress is not None:
+            try:
+                progress("run_started", {
+                    "run_id": run_id, "provider": provider_name,
+                    "execution_mode": ("REAL_LOCAL_READ_ONLY" if provider_name in {"gemini", "ollama"} else
+                                       "MANUAL_POLICY_PROBE" if provider_name == "probe" else "FIXTURE_REPLAY"),
+                })
+            except Exception:
+                pass
         def observe_effect(result: GatewayResult):
             # Reconcile and record each request before the model receives its
             # result and can propose another tool call. No OS collector is
@@ -90,7 +102,8 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
             return receipt
 
         run = AgentRunner(gateway, provider, max_tool_calls=4,
-                          effect_observer=observe_effect).run(run_id=run_id, task=task)
+                          effect_observer=observe_effect,
+                          progress=progress).run(run_id=run_id, task=task)
         steps: list[dict[str, object]] = []
         for step in run.steps:
             receipt = step.effect
@@ -111,7 +124,7 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
         final_risk = (run.steps[-1].risk if run.steps else
                       RiskAssessment(0, "MONITOR", 0, 0, ()))
         layers = build_layer_report(
-            provider=run.provider, model=provider.model if provider_name == "gemini" else None,
+            provider=run.provider, model=provider.model if provider_name in {"gemini", "ollama"} else None,
             policy=policy, results=(step.result for step in run.steps), risk=final_risk,
             effect_verdicts=(str(step["effectseal"]["verdict"]) for step in steps),
         )
@@ -135,8 +148,8 @@ def run_demo_task(task: str, provider_name: str, audit_dir: Path,
         return {
             "run_id": run_id,
             "provider": run.provider,
-            "model": provider.model if provider_name == "gemini" else None,
-            "execution_mode": ("REAL_LOCAL_READ_ONLY" if provider_name == "gemini" else
+            "model": provider.model if provider_name in {"gemini", "ollama"} else None,
+            "execution_mode": ("REAL_LOCAL_READ_ONLY" if provider_name in {"gemini", "ollama"} else
                                "MANUAL_POLICY_PROBE" if provider_name == "probe" else "FIXTURE_REPLAY"),
             "stop_reason": run.stop_reason,
             "final_message": run.final_message,

@@ -85,6 +85,40 @@ class RuntimeApiTests(unittest.TestCase):
             "task": "Inspect", "provider": "fixture", "readme_text": "",
         }).status_code, 422)
 
+    def test_stream_reports_real_gateway_decision_before_signed_completion(self):
+        response = self.client.post("/api/runtime/run/stream", json={
+            "task": "Summarize README", "provider": "fixture",
+        })
+        self.assertEqual(response.status_code, 200)
+        frames = [frame for frame in response.text.split("\n\n") if frame.startswith("event: ")]
+        names = [frame.splitlines()[0].removeprefix("event: ") for frame in frames]
+        self.assertEqual(names[0], "run_started")
+        self.assertEqual(names[-1], "run_completed")
+        self.assertLess(names.index("tool_proposed"), names.index("policy_decision"))
+        self.assertLess(names.index("policy_decision"), names.index("run_completed"))
+        decisions = [json.loads(frame.splitlines()[1].removeprefix("data: "))["data"]
+                     for frame in frames if frame.startswith("event: policy_decision")]
+        self.assertEqual([(item["decision"], item["executed"]) for item in decisions],
+                         [("ALLOW", True), ("DENY", False)])
+        completion = json.loads(frames[-1].splitlines()[1].removeprefix("data: "))["data"]["result"]
+        self.assertTrue(completion["signed_receipt"]["valid"])
+
+    def test_recent_run_history_reopens_the_same_signed_decision(self):
+        created = self.client.post("/api/runtime/run", json={
+            "task": "Summarize README", "provider": "fixture",
+        }).json()
+        listing = self.client.get("/api/runtime/runs")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()["runs"][0]["run_id"], created["run_id"])
+        detail = self.client.get(f"/api/runtime/runs/{created['run_id']}")
+        self.assertEqual(detail.status_code, 200)
+        body = detail.json()
+        self.assertTrue(body["verified"])
+        self.assertEqual(body["outcome"], "BLOCKED")
+        self.assertEqual([(step["decision"], step["executed"]) for step in body["steps"]],
+                         [("ALLOW", True), ("DENY", False)])
+        self.assertNotIn("final_message", body)
+
     def test_provider_status_never_returns_key(self):
         response = self.client.get("/api/runtime/provider-status")
         self.assertEqual(response.status_code, 200)

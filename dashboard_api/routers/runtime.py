@@ -2,23 +2,31 @@
 
 from pathlib import Path
 from io import BytesIO
+from datetime import datetime, timezone
 import importlib.util
 import json
 import os
+from queue import Empty, Queue
+import re
 import shlex
 from tempfile import TemporaryDirectory
+from threading import BoundedSemaphore, Thread
 from typing import Literal
 import uuid
+from urllib.error import URLError
+from urllib.parse import urlsplit
+from urllib.request import ProxyHandler, Request, build_opener
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from agent_runtime.service import run_demo_task, run_container_demo
 from agent_runtime.agent import ToolProposal
 from agent_runtime.evidence import verify_chain
 from agent_runtime.export_evidence import export_public_run
+from agent_runtime.verify_public import verify_public_run
 from agent_runtime.local_key import gemini_key_configured
 from agent_runtime.service import FIXTURE_README
 
@@ -29,6 +37,8 @@ EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "result
 SECONDARY_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v3.json"
 FALLBACK_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v2.json"
 LEGACY_EVALUATION_REPORT = Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "agentsentinel_model_eval_v1.json"
+_LIVE_MODEL_SLOTS = BoundedSemaphore(2)
+_SENSITIVE_VALUE = re.compile(r"(?i)\b(api[_-]?key|password|secret|token)\s*[:=]\s*[^\s,;]+")
 
 
 class RunRequest(BaseModel):
@@ -58,15 +68,114 @@ def run_agent_task(request: RunRequest):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+def _public_progress(name: str, data: dict[str, object]) -> dict[str, object]:
+    """Keep the live trace useful without echoing arbitrary tool arguments."""
+    if name != "tool_proposed":
+        if name == "model_turn":
+            message = str(data.get("message", ""))[:300]
+            return {**data, "message": _SENSITIVE_VALUE.sub(r"\1=[redacted]", message)}
+        return data
+    arguments = data.get("arguments")
+    values = arguments if isinstance(arguments, dict) else {}
+    tool = str(data.get("tool_name", ""))
+    if tool == "read_file":
+        target = str(values.get("path", ""))[:160]
+    elif tool == "execute_command":
+        argv = values.get("argv", [])
+        target = " ".join(str(value) for value in argv)[:160] if isinstance(argv, list) else "[invalid argv]"
+    elif tool == "http_post":
+        parsed = urlsplit(str(values.get("url", "")))
+        target = f"{parsed.scheme}://{parsed.hostname or ''}{parsed.path}"[:160]
+    else:
+        target = "[unrecognized tool]"
+    return {
+        "turn": data.get("turn"), "request_id": data.get("request_id"),
+        "tool_name": tool, "target": _SENSITIVE_VALUE.sub(r"\1=[redacted]", target),
+        "source": str(data.get("source", "agent"))[:40],
+    }
+
+
+@router.post("/run/stream")
+def stream_agent_task(request: RunRequest):
+    """Emit actual agent and gateway checkpoints, then the signed final run."""
+    events: Queue[tuple[str, dict[str, object]]] = Queue(maxsize=128)
+    sequence = 0
+
+    def publish(name: str, data: dict[str, object]) -> None:
+        nonlocal sequence
+        sequence += 1
+        frame = {
+            "sequence": sequence,
+            "at": datetime.now(timezone.utc).isoformat(),
+            "data": _public_progress(name, data),
+        }
+        try:
+            events.put((name, frame), timeout=1)
+        except Exception:
+            # The browser may have disconnected. The bounded worker still
+            # completes the authoritative audit and signed receipt.
+            pass
+
+    def worker() -> None:
+        acquired = False
+        try:
+            if request.provider in {"gemini", "ollama"}:
+                acquired = _LIVE_MODEL_SLOTS.acquire(blocking=False)
+                if not acquired:
+                    publish("run_error", {"code": "MODEL_BUSY", "message": "Two live model runs are already active. Retry shortly or use fixture replay."})
+                    return
+            result = run_demo_task(
+                request.task, request.provider, AUDIT_DIR,
+                readme_text=request.readme_text if request.readme_text is not None else FIXTURE_README,
+                progress=publish,
+            )
+            publish("run_completed", {"result": result})
+        except ValueError as exc:
+            publish("run_error", {"code": "INVALID_INPUT", "message": str(exc)[:240]})
+        except RuntimeError as exc:
+            publish("run_error", {"code": "RUN_UNAVAILABLE", "message": str(exc)[:240]})
+        except Exception:
+            publish("run_error", {"code": "RUN_FAILED", "message": "The run failed. Check the API logs and retry."})
+        finally:
+            if acquired:
+                _LIVE_MODEL_SLOTS.release()
+
+    def frames():
+        Thread(target=worker, daemon=True).start()
+        while True:
+            try:
+                name, payload = events.get(timeout=15)
+            except Empty:
+                yield ": heartbeat\n\n"
+                continue
+            yield f"event: {name}\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
+            if name in {"run_completed", "run_error"}:
+                break
+
+    return StreamingResponse(frames(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @router.get("/provider-status")
 def provider_status():
-    """Configuration only; never return or probe the credential itself."""
+    """Report usable local providers without returning any credential."""
     sdk_installed = (importlib.util.find_spec("google") is not None
                      and importlib.util.find_spec("google.genai") is not None)
+    ollama_model = os.environ.get("AGENTSENTINEL_OLLAMA_MODEL", "qwen2.5:3b")
+    ollama_available = False
+    try:
+        request = Request("http://127.0.0.1:11434/api/tags")
+        with build_opener(ProxyHandler({})).open(request, timeout=1.5) as response:
+            tags = json.loads(response.read(100_000))
+        ollama_available = any(item.get("name") == ollama_model for item in tags.get("models", []))
+    except (OSError, URLError, ValueError, TypeError, KeyError):
+        pass
     return {"fixture_available": True,
             "gemini_key_configured": gemini_key_configured(),
             "gemini_sdk_installed": sdk_installed,
             "gemini_model": os.environ.get("AGENTSENTINEL_GEMINI_MODEL", "gemini-3.5-flash-lite"),
+            "ollama_available": ollama_available,
+            "ollama_model": ollama_model,
             "workspace": "disposable-synthetic"}
 
 
@@ -99,6 +208,92 @@ def run_restricted_container(request: ContainerDemoRequest):
         return run_container_demo(request.attack, AUDIT_DIR)
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _runtime_run_summary(run_id: str, *, include_events: bool = False) -> dict[str, object]:
+    """Return bounded, read-only metadata from one local gateway audit."""
+    log_path = AUDIT_DIR / f"{run_id}.jsonl"
+    if not log_path.is_file():
+        raise HTTPException(status_code=404, detail="run not found")
+    try:
+        if log_path.stat().st_size > 4_000_000:
+            raise ValueError("run evidence too large")
+        records = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+        events = [record["event"] for record in records if isinstance(record.get("event"), dict)]
+        report = next((event for event in events if event.get("event") == "LAYER_REPORT"), None)
+        decisions = [event for event in events if event.get("event") == "DECISION"]
+        results = {event.get("request_id"): event for event in events
+                   if event.get("event") == "EXECUTION_RESULT"}
+        effects = {event.get("request_id"): event for event in events
+                   if event.get("event") == "EFFECTSEAL_RECEIPT"}
+        if report is None:
+            raise ValueError("run did not reach a signed result")
+        layers = report.get("layers", [])
+        provider = layers[0].get("evidence", {}).get("provider", "unknown") if layers else "unknown"
+        data_dir = AUDIT_DIR.parent
+        key = (data_dir / "runtime-audit-key.bin").read_bytes()
+        public_key = (data_dir / "runtime-signing-key.pub").read_text(encoding="ascii").strip()
+        local_check = verify_chain(log_path, data_dir / "runtime-anchor" / f"{run_id}.json", key)
+        public_check = verify_public_run(run_id, data_dir, public_key)
+        steps = [{
+            "request_id": decision.get("request_id"),
+            "tool_name": decision.get("tool_name"),
+            "decision": decision.get("decision"),
+            "reason_code": decision.get("reason_code"),
+            "executed": bool(results.get(decision.get("request_id"), {}).get("executed", False)),
+            "effect_verdict": effects.get(decision.get("request_id"), {}).get("verdict"),
+        } for decision in decisions]
+        summary: dict[str, object] = {
+            "run_id": run_id,
+            "updated_at": datetime.fromtimestamp(log_path.stat().st_mtime, timezone.utc).isoformat(),
+            "provider": provider,
+            "outcome": "BLOCKED" if any(step["decision"] == "DENY" for step in steps)
+                       else "NO_DENIAL" if steps else "NO_PROPOSAL",
+            "tool_calls": len(steps),
+            "verified": local_check.get("valid") is True and public_check.get("valid") is True,
+            "audit_records": len(records),
+        }
+        if include_events:
+            summary.update({
+                "steps": steps,
+                "layers": [{"layer": layer.get("layer"), "name": layer.get("name"),
+                            "mode": layer.get("mode")} for layer in layers],
+                "stop_reason": report.get("stop_reason"),
+                "final_message_sha256": report.get("final_message_sha256"),
+                "audit_verification": local_check,
+                "public_verification": public_check,
+            })
+        return summary
+    except (OSError, UnicodeError, ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError):
+        raise HTTPException(status_code=409, detail="run evidence incomplete or unreadable") from None
+
+
+@router.get("/runs")
+def list_runtime_runs(limit: int = Query(default=10, ge=1, le=50)):
+    """Recent signed gateway runs; omit half-written provider-error records."""
+    if not AUDIT_DIR.exists():
+        return {"runs": []}
+    paths = sorted(AUDIT_DIR.glob("*.jsonl"), key=lambda path: path.stat().st_mtime,
+                   reverse=True)
+    runs = []
+    for path in paths:
+        try:
+            safe_id = str(uuid.UUID(path.stem))
+            runs.append(_runtime_run_summary(safe_id))
+        except (ValueError, HTTPException, OSError):
+            continue
+        if len(runs) >= limit:
+            break
+    return {"runs": runs}
+
+
+@router.get("/runs/{run_id}")
+def get_runtime_run(run_id: str):
+    try:
+        safe_id = str(uuid.UUID(run_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid run ID") from exc
+    return _runtime_run_summary(safe_id, include_events=True)
 
 
 @router.get("/runs/{run_id}/verify")
