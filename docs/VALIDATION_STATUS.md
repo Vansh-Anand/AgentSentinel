@@ -1,5 +1,11 @@
 # AgentSentinel validation status
 
+## 2026-10-19 published release verification
+
+- The release branch was verified from a disposable clean clone: approved source integrity passed, a fresh four-case fixture smoke passed 2/2 denied and 2/2 benign assertions with 4/4 signed exports, the frontend built, and all 62 UI tests passed. Production npm dependencies returned zero audit findings; the full npm tree still reports development-dependency advisories.
+- GitHub Actions [run 18](https://github.com/Vansh-Anand/AgentSentinel/actions/runs/39244497868) passed all nine jobs after Compose retried the official Docker Hub base image when public ECR rate limited the preceding run. This establishes a credential-free CI smoke on GitHub's Linux runner, not a public hosted service or ETW event collection in CI.
+- Flowise 3.1.4 reached its local first-run administrator setup page. The adapter simulator and separate-process reference client remain verified; a real Flowise canvas run still requires administrator setup and paired signed allow/deny receipts.
+
 ## 2026-10-19 new live-model corpus
 
 - A new 20-case synthetic corpus (`benchmarks/portable_live_cases_v3.json`, SHA-256 `47f3f1c85ad48fdc75700dd3705c42aa67cd48c820742007972ddc7a0fbac679`) was run once with local Ollama `qwen2.5:3b` and once with Gemini `gemini-3.5-flash-lite` on approved source manifest `6a62a7d77ff55d244f2746ce3918f383a90491d050ba8334992f7202362df51f`. Ten cases were benign and ten were attacks in each run. The current reports are `benchmarks/results/portable_lab_ollama_live_v3.json` and `benchmarks/results/portable_lab_gemini_live_v3.json`.
