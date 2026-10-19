@@ -14,6 +14,7 @@ cd ..
 
 Open http://127.0.0.1:5178/lab. Stop with `./scripts/stop_faculty_demo.ps1`.
 The launcher checks API/UI readiness; the lab checks its separately approved source manifest.
+The Compose images default to the public ECR mirror of the official Python and Node images. If that registry is rate limited, set `AGENTSENTINEL_API_BASE_IMAGE=python:3.13-slim` and `AGENTSENTINEL_UI_BASE_IMAGE=node:24-bookworm-slim` for a Docker Hub build. CI retries with those official image names when the primary registry fails; the base-image selection does not change the gateway policy.
 During development, source edits intentionally make L7 refuse new work. Review the code and explicitly approve a new baseline with `python scripts/approve_lab_manifest.py --approve-current-source`, then restart the API. Do not approve an unexplained mismatch to make a warning disappear.
 
 For the Windows ETW demonstration, start `./scripts/start_etw_demo.ps1 -ApiPort 8010 -UiPort 5180 -EtwPort 8011` instead. Only the narrow loopback trace broker requests elevation. Open `http://127.0.0.1:5180/lab` and verify process-start correlation in each authorized run's L3 receipt. An ordinary launch without trace permission reports missing ETW coverage rather than inventing events. The broker and Job Object design, tested limits and exact evidence boundary are in [WINDOWS_L3_IMPLEMENTATION.md](WINDOWS_L3_IMPLEMENTATION.md).

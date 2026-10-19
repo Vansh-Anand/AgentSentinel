@@ -1,4 +1,5 @@
-FROM public.ecr.aws/docker/library/node:24-bookworm-slim
+ARG UI_BASE_IMAGE=public.ecr.aws/docker/library/node:24-bookworm-slim
+FROM ${UI_BASE_IMAGE}
 
 WORKDIR /app
 COPY package.json package-lock.json ./

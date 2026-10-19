@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+      args:
+        API_BASE_IMAGE: ${AGENTSENTINEL_API_BASE_IMAGE:-public.ecr.aws/docker/library/python:3.13-slim}
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       AGENTSENTINEL_UI_ORIGIN: http://127.0.0.1:${AGENTSENTINEL_UI_PORT:-5173}
@@ -26,6 +28,8 @@ services:
   ui:
     build:
       context: ./frontend
+      args:
+        UI_BASE_IMAGE: ${AGENTSENTINEL_UI_BASE_IMAGE:-public.ecr.aws/docker/library/node:24-bookworm-slim}
     depends_on:
       api:
         condition: service_healthy

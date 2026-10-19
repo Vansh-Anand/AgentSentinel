@@ -95,9 +95,17 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install "cryptography>=42,<51"
       - name: Build credential-free API
-        run: docker compose build api
+        run: |
+          docker compose build api || {
+            echo "Primary image registry unavailable; retrying the official Docker Hub image"
+            AGENTSENTINEL_API_BASE_IMAGE=python:3.13-slim docker compose build api
+          }
       - name: Build credential-free UI
-        run: docker compose build ui
+        run: |
+          docker compose build ui || {
+            echo "Primary image registry unavailable; retrying the official Docker Hub image"
+            AGENTSENTINEL_UI_BASE_IMAGE=node:24-bookworm-slim docker compose build ui
+          }
       - name: Start credential-free API and UI
         run: docker compose up --no-build -d
       - name: Verify gateway, UI, and portable signed evidence

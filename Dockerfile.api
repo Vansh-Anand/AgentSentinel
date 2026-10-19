@@ -1,4 +1,5 @@
-FROM public.ecr.aws/docker/library/python:3.13-slim
+ARG API_BASE_IMAGE=public.ecr.aws/docker/library/python:3.13-slim
+FROM ${API_BASE_IMAGE}
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
