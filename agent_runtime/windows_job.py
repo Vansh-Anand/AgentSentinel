@@ -14,7 +14,7 @@ import threading
 import time
 from typing import Callable, Mapping
 
-from .lab_tools import LabPolicy
+from .lab_tools import EXECUTION_LIMIT_REASONS, LabPolicy
 from .windows_etw import EtwActionObserver
 from .windows_etw_broker import BrokerEtwActionObserver, configured as etw_broker_configured
 
@@ -145,6 +145,7 @@ class WindowsJobExecutor:
             self._record("windows_worker_assigned", worker_pid=process.pid)
 
             packet = {"workspace": str(self.workspace), "artifacts": str(self.artifacts),
+                      "catalog": policy.catalog if policy.live_workspace else None,
                       "profile": self.profile, "policy_sha256": policy.policy_hash,
                       "untrusted_readme": self.untrusted_readme,
                       "tool": tool_name, "arguments": dict(arguments)}
@@ -175,10 +176,19 @@ class WindowsJobExecutor:
                 except subprocess.TimeoutExpired:
                     continue
             receipt["exit_code"] = process.returncode
-            if len(output) > 65536 or process.returncode != 0:
+            if len(output) > 65536:
                 receipt["termination_reason"] = "WORKER_EXITED_WITH_ERROR"
                 raise WindowsJobError("WINDOWS_WORKER_FAILED")
             reply = json.loads(output)
+            if (process.returncode != 0 and isinstance(reply, dict)
+                    and reply.get("ok") is False and reply.get("error") == "ExecutionLimit"
+                    and reply.get("reason") in EXECUTION_LIMIT_REASONS):
+                receipt["termination_reason"] = "BOUNDED_EXECUTOR_REJECTED"
+                receipt["limit_reason"] = reply["reason"]
+                raise WindowsJobError("BOUNDED_EXECUTOR_REJECTED")
+            if process.returncode != 0:
+                receipt["termination_reason"] = "WORKER_EXITED_WITH_ERROR"
+                raise WindowsJobError("WINDOWS_WORKER_FAILED")
             if (not reply.get("ok") or not isinstance(reply.get("effects"), list)
                     or not isinstance(reply.get("output"), str)):
                 receipt["termination_reason"] = "WORKER_REJECTED_ACTION"

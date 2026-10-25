@@ -1,120 +1,37 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { checkHealth } from '../../api/client';
-import { Shield, Database, FlaskConical, Server, CheckCircle2, AlertTriangle, Cpu, LayoutDashboard } from 'lucide-react';
+import { MessageSquare, ListChecks, FlaskConical, Settings2, ShieldCheck, ArrowUpRight } from 'lucide-react';
 
 const navigation = [
-  { name: 'Overview', href: '/overview', icon: LayoutDashboard },
-  { name: 'Playground', href: '/lab', icon: Shield },
-  { name: 'Runs', href: '/evidence', icon: Database },
+  { name: 'Chat', href: '/lab', icon: MessageSquare },
+  { name: 'Run details', href: '/evidence', icon: ListChecks },
   { name: 'Evaluation', href: '/experiments', icon: FlaskConical },
 ];
-
-export const AppShell: React.FC = () => {
-  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'unavailable'>('checking');
+export function AppShell() {
+  const [status, setStatus] = useState('checking');
   const location = useLocation();
-  const playground = location.pathname === '/' || location.pathname.startsWith('/overview') ||
-    location.pathname === '/lab' || location.pathname.startsWith('/playground/') ||
-    location.pathname.startsWith('/runs/') || location.pathname === '/evidence';
-
   useEffect(() => {
-    const verifyConnection = async () => {
-      try {
-        await checkHealth();
-        setBackendStatus('connected');
-      } catch {
-        setBackendStatus('unavailable');
-      }
-    };
-    verifyConnection();
-    
-    // Check every 30 seconds
-    const interval = setInterval(verifyConnection, 30000);
-    return () => clearInterval(interval);
+    let alive = true;
+    async function check() { try { await checkHealth(); if (alive) setStatus('connected'); } catch { if (alive) setStatus('unavailable'); } }
+    void check(); const timer = setInterval(() => void check(), 30000);
+    return () => { alive = false; clearInterval(timer); };
   }, []);
-
-  return (
-    <div className={`flex h-screen flex-col bg-gray-50 overflow-hidden lg:flex-row ${playground ? 'sentinel-shell' : ''}`}>
-      {/* Sidebar */}
-      <div className="w-full bg-gray-900 text-white flex flex-col flex-shrink-0 lg:w-64">
-        <div className="h-12 flex items-center px-4 border-b border-gray-800 lg:h-16 lg:px-6">
-          <Cpu className="w-6 h-6 text-blue-500 mr-3" />
-          <span className="font-bold text-lg tracking-tight">AgentSentinel</span>
-        </div>
-        <nav className="grid grid-cols-4 gap-1 px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:overflow-y-auto lg:px-4 lg:py-6">
-          {navigation.map((item) => {
-            const isActive = (item.href === '/overview' && location.pathname === '/') ||
-                            (item.href === '/lab' && location.pathname.startsWith('/playground/')) ||
-                            (item.href === '/evidence' && location.pathname.startsWith('/runs/')) ||
-                            location.pathname === item.href ||
-                            (item.href !== '/' && location.pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`flex min-w-0 items-center gap-2 px-2 py-2.5 text-xs font-medium rounded-md transition-colors lg:px-3 lg:text-sm ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <item.icon className={`h-4 w-4 flex-shrink-0 lg:h-5 lg:w-5 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="hidden p-4 border-t border-gray-800 bg-gray-900 lg:block">
-          <div className="flex items-center text-xs">
-            {backendStatus === 'checking' && (
-              <div className="flex items-center text-gray-400">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse mr-2"></div>
-                Checking connection...
-              </div>
-            )}
-            {backendStatus === 'connected' && (
-              <div className="flex items-center text-emerald-400">
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                Backend Connected
-              </div>
-            )}
-            {backendStatus === 'unavailable' && (
-              <div className="flex items-center text-red-400">
-                <AlertTriangle className="w-4 h-4 mr-1.5" />
-                Backend Unavailable
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className={`h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 flex-shrink-0 lg:h-16 lg:px-6 ${playground ? 'sentinel-topbar' : ''}`}>
-          <h1 className="text-lg font-semibold text-gray-800 lg:text-xl">
-            {location.pathname === '/' ? 'Overview' : location.pathname.startsWith('/system') ? 'System status' : location.pathname.startsWith('/runs/') ? 'Run inspection' : location.pathname.startsWith('/playground/') ? 'Playground' : navigation.find(n => location.pathname === n.href || location.pathname.startsWith(`${n.href}/`))?.name || 'Research'}
-          </h1>
-          <Link to="/system" aria-label="System status" className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"><Server size={15} /> <span className="hidden sm:inline">System status</span></Link>
-        </header>
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
-          <div className="mx-auto max-w-7xl min-w-0">
-            {backendStatus === 'unavailable' ? (
-              <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-6 flex flex-col items-center justify-center text-center mt-12">
-                <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Backend Services Unavailable</h2>
-                <p className="max-w-md text-red-700">
-                  The AgentSentinel API server could not be reached. Ensure the FastAPI backend is running and the VITE_API_BASE_URL environment variable is configured correctly.
-                </p>
-              </div>
-            ) : (
-              <Outlet />
-            )}
-          </div>
-        </main>
-      </div>
+  return <div className="sentinel-shell flex h-screen flex-col overflow-hidden lg:flex-row">
+    <aside className="sentinel-sidebar flex shrink-0 flex-col border-b border-white/10 lg:w-56 lg:border-r lg:border-b-0">
+      <Link to="/lab" className="flex h-16 items-center gap-3 px-5"><span className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-400/10 text-cyan-300"><ShieldCheck size={23} /></span><span className="text-base font-bold tracking-tight text-white">AgentSentinel</span></Link>
+      <p className="hidden px-5 pb-6 text-xs leading-5 text-slate-400 lg:block">AI incident assistant.<br />Every tool action accountable.</p>
+      <nav aria-label="Main navigation" className="grid grid-cols-3 gap-1 p-2 lg:block lg:space-y-2 lg:px-3">{navigation.map(item => {
+        const active = item.href === '/lab' ? location.pathname === '/' || location.pathname === '/lab' || location.pathname.startsWith('/playground/') : item.href === '/evidence' ? location.pathname === '/evidence' || location.pathname.startsWith('/runs/') : location.pathname === item.href;
+        return <Link key={item.href} to={item.href} aria-current={active ? 'page' : undefined} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-semibold transition-colors lg:justify-start lg:text-sm ${active ? 'bg-cyan-400/10 text-cyan-200' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><item.icon size={18} />{item.name}</Link>;
+      })}</nav>
+      <div className="hidden flex-1 lg:block" />
+      <details className="advanced-nav mx-3 mb-3 rounded-xl border border-white/10 p-3 text-xs text-slate-300"><summary className="flex cursor-pointer items-center gap-2 font-semibold"><Settings2 size={15} /> Advanced</summary><nav aria-label="Advanced navigation" className="mt-3 grid gap-3 pl-1"><Link to="/overview">Project overview</Link><Link to="/system">Provider & Windows status</Link><Link to="/lab/advanced">Policy probes & layer challenges</Link><Link to="/research">Historical research</Link><a href="https://github.com/Vansh-Anand/AgentSentinel" target="_blank" rel="noreferrer" className="flex gap-1">Source code <ArrowUpRight size={13} /></a></nav></details>
+      <div className="hidden border-t border-white/10 px-5 py-4 text-[11px] text-slate-400 lg:block"><span className={`mr-2 inline-block h-1.5 w-1.5 rounded-full ${status === 'connected' ? 'bg-emerald-400' : status === 'unavailable' ? 'bg-rose-400' : 'bg-amber-300'}`} />{status === 'connected' ? 'Local API connected' : status === 'unavailable' ? 'Local API unavailable' : 'Connecting to local API'}</div>
+    </aside>
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <header className="sentinel-topbar flex h-14 shrink-0 items-center justify-between border-b border-white/10 px-4 lg:px-8"><span className="text-xs font-semibold text-slate-200">{location.pathname.startsWith('/runs/') || location.pathname === '/evidence' ? 'Run details' : location.pathname === '/experiments' ? 'Evaluation' : location.pathname === '/' || location.pathname === '/lab' || location.pathname.startsWith('/playground/') ? 'Document workspace' : 'Advanced workspace'}</span><span className="text-[10px] text-slate-400">Local workspace · server-enforced permissions</span></header>
+      <main className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-6 lg:px-8"><div className="mx-auto max-w-6xl">{status === 'unavailable' && <div role="alert" className="product-alert mb-4">The local API is unavailable. Start the demo with scripts/start_faculty_demo.ps1. Saved views will reconnect when it is ready.</div>}<Outlet /></div></main>
     </div>
-  );
-};
+  </div>;
+}

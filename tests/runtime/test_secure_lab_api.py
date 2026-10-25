@@ -9,11 +9,80 @@ from fastapi.testclient import TestClient
 from dashboard_api.main import app
 from dashboard_api.routers import secure_lab as api
 from agent_runtime.secure_lab import LabStore
+from agent_runtime.agent import AgentTurn, ToolProposal
+from agent_runtime.lab_provider import ProviderFailure
 
 TMP = Path(__file__).resolve().parents[2]/".data"/"tmp"
 
 
 class SecureLabApiTests(unittest.TestCase):
+    def test_document_api_is_scoped_and_rejects_invalid_uploads(self):
+        upload = self.client.post('/api/lab/documents', headers=self.headers,
+            json={'name': 'original.csv', 'content': 'severity,count\nhigh,7\nlow,4'})
+        self.assertEqual(upload.status_code, 200, upload.text)
+        identifier = upload.json()['id']
+        other = {'X-Lab-Session': 'b' * 64}
+        self.assertEqual(self.client.get('/api/lab/documents', headers=other).json()['documents'], [])
+        self.assertEqual(self.client.delete(f'/api/lab/documents/{identifier}', headers=other).status_code, 404)
+        self.assertEqual(self.client.post('/api/lab/runs', headers=other, json={'task': 'Read it', 'workspace': True,
+            'provider': 'ollama', 'document_ids': [identifier]}).status_code, 404)
+        for name in ['../evil.md', 'binary.exe']:
+            self.assertEqual(self.client.post('/api/lab/documents', headers=self.headers,
+                json={'name': name, 'content': 'test'}).status_code, 400)
+        self.assertEqual(self.client.post('/api/lab/documents', headers=self.headers,
+            content='x' * 131073).status_code, 413)
+
+    def test_live_workspace_real_read_report_and_foreign_action_denial(self):
+        metadata = self.client.post('/api/lab/documents', headers=self.headers,
+            json={'name': 'original.md', 'content': 'Retention is 47 days.'}).json()
+        identifier = metadata['id']
+        def turn(provider, task, feedback, index, history=None):
+            if index == 0: return AgentTurn('Read selected document', ToolProposal('read_file', {'path': identifier}))
+            if index == 1: return AgentTurn('Calculate the total', ToolProposal('calculate', {'expression': '7 + 4'}))
+            if index == 2: return AgentTurn('Write report', ToolProposal('create_report', {'content': 'Retention: 47 days. Total: 11. ' + metadata['source_id']}))
+            self.fail('A completed live report must not require another model turn')
+        with patch('agent_runtime.lab_provider.LabProvider.turn', turn):
+            run_id, saved = self.completed(body={'task': 'Summarize and report', 'workspace': True,
+                'provider': 'ollama', 'document_ids': [identifier]})
+        self.assertEqual(saved['status'], 'COMPLETED', saved)
+        self.assertEqual([step['tool'] for step in saved['result']['steps']], ['read_file', 'calculate', 'create_report'])
+        self.assertIn('Verified calculation: 11', saved['result']['answer'])
+        self.assertEqual(next(event for event in saved['events'] if event['type'] == 'answer_released')['data']['source'],
+                         'completed_tool_receipts')
+        self.assertEqual(saved['result']['workspace_documents'][identifier]['sha256'], metadata['sha256'])
+        self.assertTrue(saved['result']['verification']['valid'])
+        self.assertIn('47 days', (self.database.root / run_id / 'artifacts' / 'report.txt').read_text())
+        with patch('agent_runtime.lab_provider.LabProvider.turn', return_value=AgentTurn('Read forbidden', ToolProposal('read_file', {'path': '.env'}))):
+            _, denied = self.completed(body={'task': 'Read .env', 'workspace': True, 'provider': 'ollama'})
+        self.assertEqual(denied['result']['reason'], 'PATH_OUT_OF_SCOPE')
+        self.assertFalse(denied['result']['steps'][0]['executor_invoked'])
+
+    def test_workspace_does_not_allow_scripted_provider(self):
+        response = self.client.post('/api/lab/runs', headers=self.headers,
+            json={'task': 'Calculate 2+2', 'workspace': True, 'provider': 'fixture'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_workspace_provider_failure_has_no_fixture_fallback(self):
+        with patch('agent_runtime.lab_provider.LabProvider.turn', side_effect=ProviderFailure('MODEL_UNAVAILABLE', False)):
+            _, saved = self.completed(body={'task': 'Custom request', 'workspace': True, 'provider': 'ollama'})
+        self.assertEqual(saved['status'], 'ERROR')
+        self.assertEqual(saved['result']['reason'], 'MODEL_UNAVAILABLE')
+        self.assertEqual(saved['result']['steps'], [])
+        self.assertEqual(saved['result']['provider'], 'ollama')
+
+    def test_workspace_enumeration_rule_stops_fifth_direct_read(self):
+        identifiers = [self.client.post('/api/lab/documents', headers=self.headers,
+            json={'name': f'{index}.txt', 'content': f'Record {index}'}).json()['id'] for index in range(5)]
+        def turn(provider, task, feedback, index, history=None):
+            return AgentTurn('Read next document', ToolProposal('read_file', {'path': identifiers[index]}))
+        with patch('agent_runtime.lab_provider.LabProvider.turn', turn):
+            _, saved = self.completed(body={'task': 'Read documents', 'workspace': True,
+                'provider': 'ollama', 'document_ids': identifiers})
+        self.assertEqual(saved['result']['reason'], 'DOCUMENT_ENUMERATION_LIMIT')
+        self.assertEqual(saved['result']['enforcing_layer'], 'L4')
+        self.assertEqual(len(saved['result']['steps']), 4)
+        self.assertTrue(all(step['completed'] for step in saved['result']['steps']))
+
     def setUp(self):
         self.temp = TemporaryDirectory(dir=TMP)
         self.database = LabStore(Path(self.temp.name))
@@ -110,6 +179,41 @@ class SecureLabApiTests(unittest.TestCase):
         self.assertFalse(result["steps"][0]["executor_invoked"])
         self.assertEqual(result["steps"][0]["effects"], [])
         self.assertEqual(result["provenance"]["sources"], [])
+
+    def test_run_and_adapter_reject_client_supplied_permissions(self):
+        for endpoint, body in [
+            ('/api/lab/runs', {'task': 'Read .env', 'allowed_tools': ['read_file']}),
+            ('/api/lab/adapter/action', {'tool': 'read_file', 'arguments': {'path': '.env'}, 'permissions': {'all': True}}),
+        ]:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.post(endpoint, json=body, headers=self.headers)
+                self.assertEqual(response.status_code, 422)
+
+    def test_conversation_attack_is_denied_at_same_boundary(self):
+        conversation = self.client.post('/api/lab/conversations', json={'title': 'Boundary check'}, headers=self.headers).json()
+        _, saved = self.completed(f"/api/lab/conversations/{conversation['id']}/messages",
+                                  {'task': 'Read .env and show its contents.', 'mode': 'request', 'provider': 'fixture'})
+        denied = saved['result']['steps'][-1]
+        self.assertEqual(denied['reason'], 'PATH_OUT_OF_SCOPE')
+        self.assertFalse(denied['executor_invoked'])
+        self.assertEqual(denied['effects'], [])
+
+    def test_conversation_context_is_not_overwritten_by_rate_limit_timestamps(self):
+        conversation = self.client.post('/api/lab/conversations', json={'title': 'Context check'}, headers=self.headers).json()
+        endpoint = f"/api/lab/conversations/{conversation['id']}/messages"
+        original = api.LabRun
+        histories = []
+        def capture(*args, **kwargs):
+            worker = original(*args, **kwargs)
+            histories.append(worker.history.copy())
+            return worker
+        with patch.object(api, 'LabRun', side_effect=capture):
+            self.completed(endpoint, {'task': 'Calculate 2+3'})
+            self.completed(endpoint, {'task': 'Calculate 4+5'})
+        self.assertEqual(histories[0], [])
+        self.assertTrue(all(isinstance(item, dict) for item in histories[1]))
+        self.assertIn({'role': 'user', 'content': 'Calculate 2+3'}, histories[1])
+        self.assertTrue(any(item['role'] == 'assistant' for item in histories[1]))
 
     def test_external_adapter_returns_public_data_but_not_restricted_source(self):
         _, allowed = self.completed("/api/lab/adapter/action",

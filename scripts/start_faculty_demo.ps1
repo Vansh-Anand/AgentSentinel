@@ -1,6 +1,6 @@
 param(
-    [ValidateRange(1024, 65535)][int]$ApiPort = 8008,
-    [ValidateRange(1024, 65535)][int]$UiPort = 5178
+    [ValidateRange(1024, 65535)][int]$ApiPort = 8010,
+    [ValidateRange(1024, 65535)][int]$UiPort = 5180
 )
 
 $ErrorActionPreference = 'Stop'
@@ -60,7 +60,7 @@ try {
             # Readiness must not depend on the optional model provider probe.
             # Ollama or a cloud SDK may be slow even when the API is serving.
             $health = Invoke-RestMethod -Uri "http://127.0.0.1:$ApiPort/api/health" -TimeoutSec 2
-            $page = Invoke-WebRequest -Uri "http://127.0.0.1:$UiPort/overview" -TimeoutSec 2
+            $page = Invoke-WebRequest -Uri "http://127.0.0.1:$UiPort/lab" -TimeoutSec 2
             if ($page.StatusCode -eq 200) { $ready = $true; break }
         } catch {
             $lastReadinessError = $_.Exception.Message
@@ -91,7 +91,7 @@ try {
         ui_port = $UiPort
     } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $pidFile -Encoding utf8
 
-    Write-Output "Faculty demo: http://127.0.0.1:$UiPort/overview"
+    Write-Output "Faculty demo: http://127.0.0.1:$UiPort/lab"
     if ($status) {
         Write-Output "Gemini key configured: $($status.gemini_key_configured); SDK installed: $($status.gemini_sdk_installed)"
         Write-Output "Ollama local model ready: $($status.ollama_available) ($($status.ollama_model))"

@@ -60,6 +60,24 @@ class WindowsJobTests(unittest.TestCase):
         self.assertLess(names.index("windows_action_released"), names.index("windows_worker_finished"))
         self.assertEqual(events[-1][1]["termination_reason"], "COMPLETED")
 
+    def test_oversized_exponent_is_reported_as_l3_limit(self):
+        store = LabStore(self.root / "store")
+        config = {"provider": "fixture", "profile": "balanced", "mode": "request"}
+        run_id = store.create("owner", config)
+        worker = LabRun(store, run_id, config, "Calculate 2 ** 1000000", "",
+                        external_proposal=ToolProposal("calculate", {"expression": "2 ** 1000000"}))
+        with patch.dict(os.environ, {"AGENTSENTINEL_WINDOWS_JOB_REQUIRED": "1"}), \
+             patch("agent_runtime.secure_lab.integrity_status", return_value={"valid": True, "reason": "APPROVED_SOURCE_MATCH"}):
+            worker.run()
+        result = store.get(run_id, "owner")["result"]
+        self.assertEqual(result["status"], "STOPPED")
+        self.assertEqual(result["reason"], "EXPONENT_LIMIT")
+        self.assertEqual(result["enforcing_layer"], "L3")
+        self.assertEqual(result["steps"][0]["windows"]["termination_reason"], "BOUNDED_EXECUTOR_REJECTED")
+        self.assertTrue(result["steps"][0]["executor_invoked"])
+        self.assertFalse(result["steps"][0]["completed"])
+        self.assertEqual(result["steps"][0]["effects"], [])
+
     def test_gateway_denial_never_releases_a_worker(self):
         events = []
         executor = self.executor(on_event=lambda name, data: events.append(name))

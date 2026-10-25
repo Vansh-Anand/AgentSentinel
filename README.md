@@ -1,8 +1,13 @@
 # AgentSentinel
 
+## Live document workspace
+
+Main Chat now uses Gemini or Ollama with your uploaded UTF-8 text, Markdown and CSV. Every proposed tool action is checked against selected resource IDs and server-owned permissions. See the [current demo guide](docs/frontend/live-workspace-demo.md) and [trust boundaries](docs/implementation/live_workspace_security.md). Fixtures remain explicitly separate verification modes. Local sessions are not production account authentication.
+
+
 ## Interactive faculty demo
 
-Run `./scripts/start_faculty_demo.ps1`, then open `http://127.0.0.1:5178/overview`. For real Windows ETW process observations in the local demo, run `./scripts/start_etw_demo.ps1 -ApiPort 8010 -UiPort 5180 -EtwPort 8011` and open `http://127.0.0.1:5180/overview`; only the narrow loopback ETW broker asks for elevation. Stop either mode with `./scripts/stop_faculty_demo.ps1`. The product separates **Overview**, chatbot-style **Playground**, per-action **Layer trace**, **Detailed results**, **Runs**, and **Evaluation**. Enter a custom task or attack in Playground, select Gemini or Ollama for free-form model behavior, or select **Scripted fixture** for deterministic examples. A conversation keeps bounded prior turns as data; every new message starts a separately authorized, signed run. The visible seven-layer inspector and recorded trace show only checkpoints emitted by the backend. Live-provider failures never switch silently to a fixture.
+Run `./scripts/start_faculty_demo.ps1`, then open **http://127.0.0.1:5180/lab** (API port 8010). The primary product has three views: **Chat**, **Run details**, and **Evaluation**. Start with the incident-investigation workflow, then demonstrate a forbidden file request and a document injection. The compact action journey uses recorded backend events; full seven-layer traces, Windows telemetry and historical research are under Advanced or the run's technical details. See the [eight-minute demo guide](docs/frontend/demo-walkthrough.md). Use `./scripts/verify_demo.ps1` for the local regression gates. For optional Windows ETW observations, use `./scripts/start_etw_demo.ps1`; stop either mode with `./scripts/stop_faculty_demo.ps1`.
 
 For the current route map, verified browser examples, and honest release boundary, see the [current product release](docs/PRODUCT_RELEASE_2026-10-17.md). The default launcher serves the UI on 5178; pass `-UiPort` and `-ApiPort` to choose free loopback ports.
 

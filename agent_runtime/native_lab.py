@@ -103,6 +103,7 @@ class NativeLabExecutor:
             polling = threading.Thread(target=poll, name="agentsentinel-native-poll", daemon=True)
             polling.start()
             packet = {"workspace": str(self.workspace), "artifacts": str(self.artifacts),
+                      "catalog": policy.catalog if policy.live_workspace else None,
                       "profile": self.profile, "policy_sha256": policy.policy_hash,
                       "untrusted_readme": self.untrusted_readme,
                       "tool": tool_name, "arguments": arguments}

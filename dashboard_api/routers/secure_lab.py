@@ -19,6 +19,7 @@ from agent_runtime.secure_lab import (LabStore, LabRun, ROOT, TERMINAL, CHALLENG
 from agent_runtime.lab_tools import PROFILES, LabPolicy
 from agent_runtime.lab_capabilities import CapabilityError, CapabilityIssuer, ROLES
 from agent_runtime.agent import ToolProposal
+from agent_runtime.workspace_documents import DocumentStore, DocumentError, snapshot
 from agent_runtime import native_lab, tpm_quote, windows_job, windows_etw, windows_etw_broker
 
 router = APIRouter()
@@ -61,17 +62,60 @@ def owned(run_id: str, session: str):
 
 
 class StartRun(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     task: str = Field(min_length=1, max_length=4000)
     context: str = Field(default="", max_length=8000)
     mode: Literal["task", "document", "request"] = "task"
     profile: Literal["balanced", "strict", "read_only", "approval"] = "balanced"
     provider: Literal["fixture", "ollama", "gemini"] = "fixture"
+    workspace: bool = False
+    document_ids: list[str] = Field(default_factory=list, max_length=16)
     challenge: Literal["L1", "L2", "L3", "L4", "L5", "L6", "L7"] | None = None
     client_request_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{8,80}$")
 
 
 class NewConversation(BaseModel):
     title: str = Field(default="New investigation", min_length=1, max_length=100)
+
+
+class UploadDocument(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=104)
+    content: str = Field(min_length=1, max_length=16_384)
+
+
+def documents():
+    return DocumentStore(store().root)
+
+
+@router.post("/documents")
+def upload_document(body: UploadDocument, session: str = Depends(owner)):
+    try:
+        return documents().upload(session, body.name, body.content)
+    except DocumentError as exc:
+        raise HTTPException(400, str(exc)) from None
+
+
+@router.get("/documents")
+def list_documents(session: str = Depends(owner)):
+    return {"documents": documents().list(session)}
+
+
+@router.delete("/documents/{document_id}")
+def delete_document(document_id: str, session: str = Depends(owner)):
+    try:
+        documents().delete(session, document_id)
+    except DocumentError as exc:
+        raise HTTPException(404, str(exc)) from None
+    return {"deleted": True, "retained_run_snapshots": True}
+
+
+@router.get("/documents/{document_id}")
+def document_metadata(document_id: str, session: str = Depends(owner)):
+    try:
+        return documents().selected(session, [document_id])[0][0]
+    except DocumentError as exc:
+        raise HTTPException(404, str(exc)) from None
 
 
 class Approval(BaseModel):
@@ -85,6 +129,7 @@ class Counterfactual(BaseModel):
 
 
 class AdapterAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     tool: str = Field(min_length=1, max_length=40)
     arguments: dict = Field(default_factory=dict)
     profile: Literal["balanced", "read_only", "strict", "approval"] = "read_only"
@@ -143,6 +188,16 @@ def launch(body: StartRun, session: str, external_proposal: ToolProposal | None 
            conversation_id: str | None = None):
     if not body.task.strip():
         raise HTTPException(400, "Task cannot be blank.")
+    selected = []
+    if body.workspace:
+        if body.provider == "fixture" or body.challenge:
+            raise HTTPException(400, "Live workspaces require a live provider and do not accept scripted challenges.")
+        try:
+            selected = documents().selected(session, body.document_ids)
+        except DocumentError as exc:
+            raise HTTPException(404, str(exc)) from None
+    elif body.document_ids:
+        raise HTTPException(400, "Document IDs require a live workspace.")
     if body.challenge:
         body.provider = "fixture"
         body.profile = "balanced"
@@ -166,6 +221,7 @@ def launch(body: StartRun, session: str, external_proposal: ToolProposal | None 
                 history.append({"role": "assistant", "content": str(result["answer"])[:500]})
     request_hash = digest({"task": body.task, "context": body.context, "mode": body.mode,
         "profile": body.profile, "provider": body.provider, "challenge": body.challenge,
+        "workspace": body.workspace, "document_ids": body.document_ids,
         "conversation_id": conversation_id,
         "external": {"name": external_proposal.name, "arguments": external_proposal.arguments} if external_proposal else None,
         "integration_nonce": integration_nonce, "integration_role": integration_role})
@@ -179,12 +235,14 @@ def launch(body: StartRun, session: str, external_proposal: ToolProposal | None 
                 return {"run_id": existing, "schema_version": 2, "reused": True}
         now = time.monotonic()
         # Global bound also prevents evading the per-session limit with fresh tokens.
-        history = [stamp for stamp in _recent.get("global", []) if now-stamp < 60]
-        if len(history) >= 20 or not _slots.acquire(blocking=False):
+        recent_requests = [stamp for stamp in _recent.get("global", []) if now-stamp < 60]
+        if len(recent_requests) >= 20 or not _slots.acquire(blocking=False):
             raise HTTPException(429, "Local lab busy or rate limit reached. Retry shortly.")
-        _recent["global"] = history + [now]
+        _recent["global"] = recent_requests + [now]
     try:
         config = {"provider": body.provider, "profile": body.profile, "mode": body.mode,
+                  "workspace": body.workspace,
+                  "workspace_catalog": {meta["id"]: {**meta, "classification": "USER_UPLOADED_UNTRUSTED"} for meta, _ in selected},
                   "challenge": body.challenge, "task_bytes": len(body.task.encode()),
                   "context_bytes": len(body.context.encode()), "request_hash": request_hash,
                   "integration_nonce": integration_nonce, "integration_role": integration_role}
@@ -199,6 +257,8 @@ def launch(body: StartRun, session: str, external_proposal: ToolProposal | None 
         if external_proposal:
             config["adapter"] = True
         worker = LabRun(store(), run_id, config, body.task, body.context, external_proposal, history)
+        if body.workspace:
+            snapshot(selected, worker.directory / "workspace")
         with _lock:
             _workers[run_id] = worker
 
@@ -321,13 +381,13 @@ def evaluation():
     value = next((report for name in (
         "portable_lab_eval_etw_broker.json", "portable_lab_eval_v2.json"
     ) if (report := matching(name)) is not None), None)
-    if value is None:
-        return {"available": False, "reason": "The recorded fixture evaluation belongs to an earlier source baseline. Rerun the evaluation for this build."}
     live_reports = [report for name in (
+        "workspace_gemini_live.json", "workspace_ollama_live.json",
         "portable_lab_gemini_live_v3.json", "portable_lab_ollama_live_v3.json",
         "portable_lab_live_v2.json"
     ) if (report := matching(name)) is not None]
-    return {"available": True, "report": value, "live_reports": live_reports,
+    return {"available": value is not None or bool(live_reports), "report": value, "live_reports": live_reports,
+            "reason": "No matching fixture report. Live model trials, when present, are shown separately.",
             "live": live_reports[0] if live_reports else None}
 
 
@@ -477,7 +537,8 @@ def counterfactual(run_id: str, body: Counterfactual, session: str = Depends(own
     verified = verify(run_id, session)
     if not verified["valid"]:
         raise HTTPException(409, "Evidence verification failed.")
-    policy = LabPolicy(store().root/run_id/"workspace", body.profile)
+    policy = LabPolicy(store().root/run_id/"workspace", body.profile,
+                       value["config"].get("workspace_catalog", {}) if value["config"].get("workspace") else None)
     comparisons = []
     for step in value["result"].get("steps", []):
         args = dict(step["arguments"])

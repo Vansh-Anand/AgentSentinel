@@ -2,17 +2,19 @@
   "schema": 1,
   "scope": "approved UTF-8 source text with normalized line endings; not loaded-code or hardware attestation",
   "files": {
-    "agent_runtime/secure_lab.py": "8c6657e40a85fc152566789afbbea95298e8c3cc54e2d7821881b08c2704f21d",
-    "agent_runtime/native_lab.py": "9a63a14195762b461b3b682e3578e1acd25d007a2455dafd9d16a8a7cd231952",
-    "agent_runtime/native_worker.py": "34de0e6c350fb825de5a87e76f4954bac5e237a5464205c917c75bc9583c5764",
+    "agent_runtime/secure_lab.py": "784e0d3bf31651b6fe96f19cb448c486974dc1f40a2d54fd2e6bf8623b6c6b8c",
+    "agent_runtime/native_lab.py": "3382cc0224d6049c8c61dc1d0d45c78019d127dd234cb34f1eef099d9f728386",
+    "agent_runtime/native_worker.py": "a0a0717a382adb525e0da233b8401155344b17faa4d7a7adc7740a6c86d8318d",
+    "agent_runtime/workspace_documents.py": "f3700b0d4d85a503555e6c4ccd177895934b0087e0213a2c304b617168cca11c",
+    "dashboard_api/body_limit.py": "7c4d2bbda649953f229a0e02e517650a8febefd35187a7cfdd2a46282122a6ea",
     "agent_runtime/tpm_quote.py": "c3d1b343c4c0772f1fb98aedf0aa34f93cfaa0288054640caff3558e8b46a776",
-    "agent_runtime/windows_job.py": "f94e3cd1c6a3a97e23af0a9b75b6f7b399ddb81c9c99e9d9ec432ae5786a35ee",
+    "agent_runtime/windows_job.py": "37eac8e7d79732c52941177147b1c740e06d9e4592b925061825b767d0ff8b7b",
     "agent_runtime/windows_etw.py": "f1fc272ccdcded593a3caf28d4331cd9aba74ece660d4b1bde3d0d2409fdc308",
     "agent_runtime/windows_etw_broker.py": "1367a714418503f5b6f1385a0ff64c63e7208aac3446270f7a0b851314e8e086",
-    "agent_runtime/lab_tools.py": "194edfd1a080b1241a16c82cf464e9f37b631b3d7a033232489b5450c51b1a4f",
-    "agent_runtime/lab_provider.py": "2d17bcc8061699858ebea761934b89328b8c6485302e9da8355782e7aeb4beee",
+    "agent_runtime/lab_tools.py": "cc2aa7dfaceee2b4f5d2d5c3693da81cfb94f4aaa4de3825ac5f56a43a91d3ed",
+    "agent_runtime/lab_provider.py": "8d28030c9a4fade4889650aab0fcfb5e120186f6059a5e7bf2ec3f32dcd2412b",
     "agent_runtime/lab_capabilities.py": "b6ed8c55ebaa8631b5dc91f2c3364116212f04a205badd98bc222612257f0a10",
-    "agent_runtime/lab_provenance.py": "794836ab303815f5abe36fd5ab42505ae53f57d78bddde4e06efbedbefdaa43a",
+    "agent_runtime/lab_provenance.py": "6c84702f8608b4061fa6aec1ac8588acf30f703a902a01647deb4389e9cc599b",
     "agent_runtime/gateway.py": "837111aa3f7527c51f8129312b9e4c176630c45ce3bd2c5c5f1b5f4fceb6d684",
     "agent_runtime/policy.py": "44cd439bd55b946d65aba57f2432984d499c95f5d8946329bab6f2727756e591",
     "agent_runtime/tools.py": "f2decd746e331683f8ba58c386c377562ea7ae80d1e22b1a25ceaf370ec61c27",
@@ -21,7 +23,7 @@
     "agent_runtime/ledger.py": "0a4dcfe8f2bb63f7490db6a8e02b7ca3ece9a84cb023c9dd358de2a65e3576a9",
     "agent_runtime/providers.py": "76574713b15f96e130064a07cd7aeb0e6aa0e6de482759e590e3cb513d9aaf96",
     "agent_runtime/local_key.py": "cb0122754378053e85bb11d681c36883d35d8186e5173654db1453397d3aa094",
-    "dashboard_api/main.py": "fa5b125e0931a889bcdc3aaf2a088be734d96f59cb6df69fd01c265c34237f15",
-    "dashboard_api/routers/secure_lab.py": "280a9e80b8bc76cf6c52a3409c8d4e198a248b8663f79e6a5a5ffedf3c1638a1"
+    "dashboard_api/main.py": "a00a912177b09b86eaaf18a2ac17b8db37684254f779b073ad0d9be73cd21a01",
+    "dashboard_api/routers/secure_lab.py": "79ef727b2df1bfcba331cc8c218aab8d918d1485045d6cddd278545d8d593251"
   }
 }

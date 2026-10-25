@@ -5,11 +5,11 @@ import json
 from pathlib import Path
 import sys
 
-from .lab_tools import LabExecutor, LabPolicy
+from .lab_tools import EXECUTION_LIMIT_REASONS, ExecutionLimit, LabExecutor, LabPolicy
 
 
 def execute_packet(packet: dict) -> dict:
-    policy = LabPolicy(Path(packet["workspace"]), packet["profile"])
+    policy = LabPolicy(Path(packet["workspace"]), packet["profile"], packet.get("catalog"))
     if policy.policy_hash != packet["policy_sha256"]:
         raise PermissionError("POLICY_HASH_MISMATCH")
     executor = LabExecutor(Path(packet["artifacts"]), packet["untrusted_readme"])
@@ -29,7 +29,10 @@ def main() -> int:
         sys.stdout.write(json.dumps({"ok": True, **result}, separators=(",", ":")) + "\n")
         return 0
     except Exception as exc:
-        sys.stdout.write(json.dumps({"ok": False, "error": type(exc).__name__}, separators=(",", ":")) + "\n")
+        error = {"ok": False, "error": type(exc).__name__}
+        if isinstance(exc, ExecutionLimit) and str(exc) in EXECUTION_LIMIT_REASONS:
+            error["reason"] = str(exc)
+        sys.stdout.write(json.dumps(error, separators=(",", ":")) + "\n")
         return 1
 
 

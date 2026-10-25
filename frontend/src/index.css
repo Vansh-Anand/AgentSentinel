@@ -141,3 +141,26 @@
     transition-duration: .01ms !important;
   }
 }
+
+/* States follow recorded server events; animation never advances security checks. */
+.sentinel-sidebar { background: #0d1727; }
+.chat-workspace { max-width: 980px; margin-inline: auto; }
+.chat-transcript { min-height: 260px; max-height: 52vh; overflow-y: auto; scroll-behavior: smooth; }
+.action-story { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.action-stage { min-width: 0; border: 1px solid #304259; border-radius: 12px; padding: 12px; color: #94a8bf; background: #101c2d; }
+.action-stage-icon { display: grid; place-items: center; flex-shrink: 0; }
+.action-stage-recorded { border-color: #286158; color: #9ce0c8; }
+.action-stage-blocked { border-color: #8a455a; color: #fbb6c6; background: #281d2c; }
+.action-stage-active { border-color: #38b5cf; color: #a1efff; }
+@media (prefers-reduced-motion: no-preference) {
+  .action-stage-recorded, .action-stage-blocked { animation: story-arrive .3s ease-out; }
+  .action-stage-active { animation: sentinel-current 1.5s ease-in-out infinite; }
+  @keyframes story-arrive { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (max-width: 700px) {
+  .action-story { grid-template-columns: 1fr; }
+  .action-stage { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
+  .action-stage p { margin: 0; }
+  .chat-transcript { max-height: none; }
+  .advanced-nav { margin-bottom: 8px; padding: 8px 12px; }
+}

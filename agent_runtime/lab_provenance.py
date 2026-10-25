@@ -6,6 +6,8 @@ import re
 
 
 CLASSIFICATION_RANK = {
+    "USER_PROVIDED_UNTRUSTED": 1,
+    "USER_UPLOADED_UNTRUSTED": 1,
     "SYNTHETIC_PUBLIC": 0,
     "ATTACKER_CONTROLLED_SYNTHETIC": 1,
     "RESTRICTED_SYNTHETIC": 2,
@@ -20,7 +22,8 @@ class ProvenanceLedger:
     model actually used a sentence, and never trusts a model-declared label.
     """
 
-    def __init__(self):
+    def __init__(self, default_classification="SYNTHETIC_PUBLIC"):
+        self.default_classification = default_classification
         self.sources: dict[str, dict] = {}
         self.artifacts: list[dict] = []
         self.exports: list[dict] = []
@@ -43,11 +46,11 @@ class ProvenanceLedger:
         self.sources[source_id] = record
 
     def unknown_citations(self, text: str) -> list[str]:
-        return sorted(set(SOURCE_REFERENCE.findall(text)) - set(self.sources))
+        return sorted(set(SOURCE_REFERENCE.findall(text.upper())) - set(self.sources))
 
     def derived_classification(self) -> str:
         if not self.sources:
-            return "SYNTHETIC_PUBLIC"
+            return self.default_classification
         return max((source["classification"] for source in self.sources.values()),
                    key=lambda label: CLASSIFICATION_RANK[label])
 

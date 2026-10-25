@@ -2,12 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from .routers import health, experiments, pipeline, evidence, status, agent, runtime, secure_lab
+from .body_limit import LabBodyLimit
 
 app = FastAPI(
     title="AgentSentinel Dashboard API",
     description="Backend API for the AgentSentinel Dashboard",
     version="1.0.0"
 )
+app.add_middleware(LabBodyLimit)
 
 # Configure CORS for local React/Vite development
 app.add_middleware(

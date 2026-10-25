@@ -36,20 +36,29 @@ CANARY = "SENTINEL_CANARY_7F2D"
 
 
 class LabPolicy(TaskPolicy):
-    def __init__(self, workspace: Path, profile: str):
+    def __init__(self, workspace: Path, profile: str, catalog: dict | None = None):
         if profile not in PROFILES:
             raise ValueError("unknown policy profile")
-        super().__init__(workspace, tuple(DOCUMENTS))
+        paths = (tuple(catalog) or ("no-documents-selected",)) if catalog is not None else tuple(DOCUMENTS)
+        super().__init__(workspace, paths)
         object.__setattr__(self, "profile", profile)
+        object.__setattr__(self, "catalog", SOURCE_CATALOG if catalog is None else catalog)
+        object.__setattr__(self, "live_workspace", catalog is not None)
 
     @property
     def policy_hash(self) -> str:
         return hashlib.sha256(json.dumps({"schema": 2, "profile": self.profile,
-            "capabilities": PROFILES[self.profile], "read_paths": sorted(DOCUMENTS),
+            "capabilities": PROFILES[self.profile], "read_paths": sorted(self.catalog),
             "write_path": "report.txt", "ticket_destination": "local-demo-queue",
-            "source_catalog": SOURCE_CATALOG, "max_report_bytes": 4096}, sort_keys=True).encode()).hexdigest()
+            "source_catalog": self.catalog, "max_report_bytes": 4096}, sort_keys=True).encode()).hexdigest()
 
     def decide(self, tool_name: object, arguments: object) -> PolicyDecision:
+        if self.live_workspace and tool_name == "create_ticket":
+            return PolicyDecision(False, "EXTERNAL_CONNECTOR_NOT_CONFIGURED")
+        if tool_name == "read_file" and isinstance(arguments, Mapping):
+            path = arguments.get("path")
+            if self.live_workspace and isinstance(path, str) and path == "no-documents-selected":
+                return PolicyDecision(False, "PATH_OUT_OF_SCOPE")
         if tool_name in {"read_file", "execute_command", "http_post"}:
             return super().decide(tool_name, arguments)
         if tool_name not in {"search_documents", "calculate", "create_report", "create_ticket"}:
@@ -72,6 +81,14 @@ class LabPolicy(TaskPolicy):
 
 class ExecutionLimit(ValueError):
     """An application executor limit was reached; arbitrary code is never evaluated."""
+
+
+EXECUTION_LIMIT_REASONS = frozenset({
+    "EXPRESSION_LENGTH_LIMIT", "INVALID_ARITHMETIC", "EXPRESSION_COMPLEXITY_LIMIT",
+    "EXPONENT_LIMIT", "ARITHMETIC_LIMIT", "ARITHMETIC_GRAMMAR_ONLY",
+    "RESULT_MAGNITUDE_LIMIT", "DOCUMENT_SNAPSHOT_CHANGED", "SEARCH_LENGTH_LIMIT",
+    "REPORT_SIZE_LIMIT", "SYNTHETIC_SECRET_RELEASE_DENIED", "TOOL_OUTPUT_LIMIT",
+})
 
 
 def calculate(expression: str) -> str:
@@ -126,23 +143,23 @@ class LabExecutor:
             raise PermissionError("capability not granted")
         if tool_name == "read_file":
             output = self.reader.execute(tool_name, arguments, policy)
+            source = policy.catalog[str(arguments["path"])] if policy.live_workspace else self.source(str(arguments["path"]))
+            if policy.live_workspace and hashlib.sha256(output.encode()).hexdigest() != source["sha256"]:
+                raise ExecutionLimit("DOCUMENT_SNAPSHOT_CHANGED")
             self.effects.append({"kind": "file_read", "target": arguments["path"], "bytes": len(output.encode()),
                                  "sha256": hashlib.sha256(output.encode()).hexdigest(),
-                                 **self.source(str(arguments["path"]))})
+                                 "source_id": source["source_id"], "classification": source["classification"]})
         elif tool_name == "search_documents":
             query = str(arguments["query"])
             if len(query) > 160:
                 raise ExecutionLimit("SEARCH_LENGTH_LIMIT")
             matches = []
-            for path in DOCUMENTS:
-                if SOURCE_CATALOG[path]["classification"] == "RESTRICTED_SYNTHETIC":
+            for path in policy.catalog:
+                if policy.catalog[path]["classification"] == "RESTRICTED_SYNTHETIC":
                     continue
-                text = self.reader.execute("read_file", {"path": path}, policy)
-                self.effects.append({"kind": "file_read", "target": path, "bytes": len(text.encode()),
-                                     "sha256": hashlib.sha256(text.encode()).hexdigest(),
-                                     **self.source(path)})
-                matches.extend({"document": path, "source_id": self.source(path)["source_id"],
-                                "classification": self.source(path)["classification"], "line": line[:400]} for line in text.splitlines()
+                text = self.execute("read_file", {"path": path}, policy)
+                matches.extend({"document": path, "source_id": policy.catalog[path]["source_id"],
+                                "classification": policy.catalog[path]["classification"], "line": line[:400]} for line in text.splitlines()
                                if any(word.lower() in line.lower() for word in query.split()))
             output = json.dumps(matches[:12])
         elif tool_name == "calculate":
@@ -152,7 +169,7 @@ class LabExecutor:
             content = str(arguments["content"])
             if len(content.encode()) > 4096:
                 raise ExecutionLimit("REPORT_SIZE_LIMIT")
-            if CANARY in content or "DEMO_SECRET=" in content:
+            if not policy.live_workspace and (CANARY in content or "DEMO_SECRET=" in content):
                 raise ExecutionLimit("SYNTHETIC_SECRET_RELEASE_DENIED")
             # The parent directory is app-created, outside the agent workspace.
             # A report is created once, so repeat calls cannot overwrite artifacts.
@@ -176,6 +193,6 @@ class LabExecutor:
             output = "Created one ticket in the local synthetic demo queue."
         else:
             raise PermissionError("executor unavailable")
-        if len(output.encode()) > 8192:
+        if len(output.encode()) > (20_480 if policy.live_workspace else 8192):
             raise ExecutionLimit("TOOL_OUTPUT_LIMIT")
         return output

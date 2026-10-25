@@ -1,30 +1,34 @@
+import { lazy, Suspense } from 'react';
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
-import { OverviewPage } from './pages/OverviewPage';
-import { PipelinePage } from './pages/PipelinePage';
-import { EvidencePage } from './pages/EvidencePage';
-import { AgentChatPage } from './pages/AgentChatPage';
-import { ExperimentsPage } from './pages/ExperimentsPage';
-import { SystemStatusPage } from './pages/SystemStatusPage';
-import { PortableSystemStatusPage } from './pages/PortableSystemStatusPage';
-import { GatewayDemoPage } from './pages/GatewayDemoPage';
-import { LiveLabPage } from './pages/LiveLabPage';
-import { ResearchPage } from './pages/ResearchPage';
-import { RunHistoryPage } from './pages/RunHistoryPage';
-import { SecureLabPage, LabEvidencePage } from './pages/SecureLabPage';
-import { PortablePlaygroundPage } from './pages/PortablePlaygroundPage';
-import { LabEvaluationPage } from './pages/LabEvaluationPage';
-import { ProductOverviewPage } from './pages/ProductOverviewPage';
+const OverviewPage = lazy(() => import('./pages/OverviewPage').then(module => ({ default: module.OverviewPage })));
+const PipelinePage = lazy(() => import('./pages/PipelinePage').then(module => ({ default: module.PipelinePage })));
+const EvidencePage = lazy(() => import('./pages/EvidencePage').then(module => ({ default: module.EvidencePage })));
+const AgentChatPage = lazy(() => import('./pages/AgentChatPage').then(module => ({ default: module.AgentChatPage })));
+const ExperimentsPage = lazy(() => import('./pages/ExperimentsPage').then(module => ({ default: module.ExperimentsPage })));
+const SystemStatusPage = lazy(() => import('./pages/SystemStatusPage').then(module => ({ default: module.SystemStatusPage })));
+const PortableSystemStatusPage = lazy(() => import('./pages/PortableSystemStatusPage').then(module => ({ default: module.PortableSystemStatusPage })));
+const GatewayDemoPage = lazy(() => import('./pages/GatewayDemoPage').then(module => ({ default: module.GatewayDemoPage })));
+const LiveLabPage = lazy(() => import('./pages/LiveLabPage').then(module => ({ default: module.LiveLabPage })));
+const ResearchPage = lazy(() => import('./pages/ResearchPage').then(module => ({ default: module.ResearchPage })));
+const RunHistoryPage = lazy(() => import('./pages/RunHistoryPage').then(module => ({ default: module.RunHistoryPage })));
+const SecureLabPage = lazy(() => import('./pages/SecureLabPage').then(module => ({ default: module.SecureLabPage })));
+const LabEvidencePage = lazy(() => import('./pages/SecureLabPage').then(module => ({ default: module.LabEvidencePage })));
+const PortablePlaygroundPage = lazy(() => import('./pages/PortablePlaygroundPage').then(module => ({ default: module.PortablePlaygroundPage })));
+const LabEvaluationPage = lazy(() => import('./pages/LabEvaluationPage').then(module => ({ default: module.LabEvaluationPage })));
+const ProductOverviewPage = lazy(() => import('./pages/ProductOverviewPage').then(module => ({ default: module.ProductOverviewPage })));
 import { AgentPlaygroundPage } from './pages/AgentPlaygroundPage';
-import { RunResultsPage, RunTracePage } from './pages/RunViews';
+const RunResultsPage = lazy(() => import('./pages/RunViews').then(module => ({ default: module.RunResultsPage })));
+const RunTracePage = lazy(() => import('./pages/RunViews').then(module => ({ default: module.RunTracePage })));
 
 function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<p role="status" className="p-6 text-sm">Loading workspace…</p>}>
       <Routes>
         <Route path="/" element={<AppShell />}>
-          <Route index element={<ProductOverviewPage />} />
+          <Route index element={<AgentPlaygroundPage />} />
           <Route path="lab" element={<AgentPlaygroundPage />} />
           <Route path="playground/:conversationId" element={<AgentPlaygroundPage />} />
           <Route path="lab/advanced" element={<PortablePlaygroundPage />} />
@@ -48,6 +52,7 @@ function App() {
           <Route path="system/classic" element={<SystemStatusPage />} />
         </Route>
       </Routes>
+    </Suspense>
     </BrowserRouter>
   );
 }

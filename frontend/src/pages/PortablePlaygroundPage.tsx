@@ -23,6 +23,7 @@ const labels: Record<string, string> = {
   NETWORK_EXECUTION_DISABLED: 'This agent cannot send data to arbitrary network destinations.',
   CAPABILITY_NOT_GRANTED: 'The selected policy does not grant this tool.',
   BOUNDED_EXECUTOR_REJECTED: 'The permitted tool reached an execution limit.',
+  EXPONENT_LIMIT: 'L3 stopped an oversized exponent inside the bounded calculator.',
   REPEATED_IDENTICAL_PROPOSAL: 'Repeated identical actions reached the sequence limit.',
   TOOL_CALL_BUDGET: 'The run reached its tool-call budget.',
   AUDIT_UNAVAILABLE: 'The required audit record could not be written, so dispatch stopped.',
